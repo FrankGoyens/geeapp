@@ -47,6 +47,8 @@
 		}
 		
 		function start_rendering_to_gl_context(canvas, gl){
+			const NEAR = 0.1;
+			const FAR = 1100;
 			gl.clearColor(0, 1, 0, 1);
 			gl.clear(gl.COLOR_BUFFER_BIT);
 			
@@ -63,9 +65,9 @@
 			gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 			
 			const positions = [
-				500, 300, -200,
-				500, 600, -200,
-				700, 300, -200
+				-100, 50, -200,
+				-100, 300, -200,
+				300, 50, -200
 			];
 			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 			
@@ -82,10 +84,10 @@
 			const mvp_matrix_buffer = gl.createBuffer();
 			const mvp_matrix_position = gl.getUniformLocation(program, "mvp_matrix");
 			
-			const p_matrix = create_perspective_matrix(90.0, canvas.width/canvas.height, 0.1, 250);
+			const p_matrix = create_perspective_matrix(90.0, canvas.width/canvas.height, NEAR, FAR);
 			const v_matrix = create_lookat_matrix(
-				[canvas.width/2, canvas.height/2, 1], 
-				[canvas.width/2 + Math.sin(0), canvas.height/2, 1 - Math.cos(0)], 
+				[0, 0, 1], 
+				[Math.sin(0), 0, 1 - Math.cos(0)], 
 				[0, 1, 0]);
 			
 			const vp_matrix = multiply(v_matrix, p_matrix);
@@ -96,6 +98,9 @@
 			const draw_offset = 0;
 			const count = 3;
 			gl.drawArrays(primitiveType, draw_offset, count);
+
+			const grid_lines = create_bottom_grid_lines(0, 1000, 1/30);
+			render_lines(gl, grid_lines, positionAttributeLocation, vp_matrix, mvp_matrix_position);
 		}
 		
 		function createShader(gl, type, source) {
@@ -144,6 +149,35 @@
 				s[1], u[1], -f[1], 0,
 				s[2], u[2], -f[2], 0,
 				-dot(s, eye), -dot(u, eye), dot(f, eye), 1
+			];
+		}
+		
+		function create_translation_matrix(translation){
+			return[
+				1, 0, 0, 0,
+				0, 1, 0, 0,
+				0, 0, 1, 0,
+				translation[0], translation[1], translation[2], 1
+			];
+		}
+		
+		function create_rotation_matrix_along_x(angle){
+			const cos_angle = Math.cos(angle);
+			const sin_angle = Math.sin(angle);
+			return[
+				1, 0, 0, 0,
+				0, cos_angle, sin_angle, 0,
+				0, -sin_angle, cos_angle, 0,
+				0, 0, 0, 1
+			];
+		}
+		
+		function create_scale_matrix(scale_x, scale_y, scale_z){
+			return [
+				scale_x, 0, 0, 0,
+				0, scale_y, 0, 0,
+				0, 0, scale_z, 0,
+				0, 0, 0, 1
 			];
 		}
 		
@@ -212,6 +246,76 @@
 		
 		function dot4(lhs_vec4, rhs_vec4){
 			return dot(lhs_vec4, rhs_vec4) + lhs_vec4[3] * rhs_vec4[3];
+		}
+		
+		function create_bottom_grid_lines(near, far, lines_per_unit){
+			const grid_magnitude = far - near;
+			const line_amount = Math.ceil(grid_magnitude * lines_per_unit); //amount for both horizontal and vertical
+			const line_spacing = grid_magnitude / line_amount;
+			let lines = [];
+			for(let i=0; i<line_amount+1; ++i){
+				const current_horizontal_pos = i * line_spacing;
+				lines.push(0); //x1
+				lines.push(current_horizontal_pos); //y1
+				lines.push(grid_magnitude); //x2
+				lines.push(current_horizontal_pos); //y2
+			}
+			for(let j=0; j<line_amount+1; ++j){
+				const current_vertical_pos = j * line_spacing;
+				lines.push(current_vertical_pos); //x1
+				lines.push(0); //y1
+				lines.push(current_vertical_pos); //x2
+				lines.push(grid_magnitude); //y2
+			}
+			return lines;
+		}
+		
+		// Shader program should already be set up
+		function render_lines(gl, lines, positionAttributeLocation, vp_matrix, mvp_matrix_position){
+			const linePositionBuffer = gl.createBuffer();
+			
+			gl.bindBuffer(gl.ARRAY_BUFFER, linePositionBuffer);
+			
+			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lines), gl.STATIC_DRAW);
+			
+			const size = 2;          // 2 components per iteration
+			const type = gl.FLOAT;   // the data is 32bit floats
+			const normalize = false; // use the data as is
+			const stride = 0;        // 0 = move size * sizeof(type) each iteration
+			const buffer_offset = 0; // start at the beginning of the buffer
+			gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, buffer_offset);
+			
+			const m_matrix = multiply_sequence([
+				create_translation_matrix([0, 0, -180]),
+				create_rotation_matrix_along_x(-Math.PI/2 - Math.PI/8),
+				create_scale_matrix(5, 1, 1),
+				create_translation_matrix([-500 * 5, -50, 0])
+			]);
+			
+			const mvp_matrix = multiply(m_matrix, vp_matrix);
+			
+			gl.uniformMatrix4fv(mvp_matrix_position, false, mvp_matrix);
+			
+			const primitiveType = gl.LINES;
+			const draw_offset = 0;
+			gl.drawArrays(primitiveType, draw_offset, lines.length);
+		}
+		
+		function multiply_sequence(sequence){
+			let result = create_identity_matrix();
+			for(let i=0; i<sequence.length; i++){
+				result = multiply(result, sequence[i]);
+			}
+			return result;
+		}
+		
+		function create_identity_matrix(){
+			return [
+				1, 0, 0, 0,
+				0, 1, 0, 0,
+				0, 0, 1, 0,
+				0, 0, 0, 1
+			]
 		}
 		
 		</script>
