@@ -12,6 +12,82 @@
 		<canvas width="1280" height="720" id="c"/>
 		<script lang="text/javascript">
 		"use strict";
+		class Particle{
+			constructor(position, force, mass, velocity){
+				this.position = position;
+				this.force = force;
+				this.mass = mass;
+				this.velocity = velocity;
+			}
+			
+			update_position(delta_t){
+				//glm::vec3 acceleration = force/mass;
+				//velocity = acceleration * deltaT;
+				//
+				//glm::vec3 newPosition = Integrator::integrateMidpoint(position, velocity, acceleration, deltaT);
+				//position = newPosition;
+				const acceleration = scalar_multiply(this.force, 1/this.mass);
+				this.velocity = scalar_multiply(acceleration, delta_t);
+				const new_position = integrate_midpoint(this.position, this.velocity, acceleration, delta_t);
+				this.position = new_position;
+			}
+		}
+		
+		class Spring{
+			constructor(first_particle, second_particle, spring_constant, dampening_constant, rest_length){
+				this.first_particle = first_particle;
+				this.second_particle = second_particle;
+				this.spring_constant = spring_constant;
+				this.dampening_constant = dampening_constant;
+				this.rest_length = rest_length;
+			}
+			
+			calculate_forces_on_particles(){
+				//glm::vec3 deltaVec = p1->getPosition() - p2->getPosition();
+				//float length = glm::distance(p1->getPosition(), p2->getPosition());
+				//glm::vec3 deltaVelocity = p1->getVelocity() - p2->getVelocity();
+				//
+				//glm::vec3 forceB = (springConstant * (length - restLength) + dampingConstant * (glm::dot(deltaVelocity, deltaVec) / length)) * deltaVec/length,
+				//		forceA = forceB*-1.0f;
+				//
+				//p1->addForce(forceA);
+				//p2->addForce(forceB);
+				
+				const delta_vec = minus(this.first_particle.position, this.second_particle.position);
+				const length = magnitude(delta_vec);
+				const delta_velocity = minus(this.first_particle.velocity, this.second_particle.velocity);
+				
+				const force = scalar_multiply(scalar_multiply(delta_vec, 1/length), (this.spring_constant * (length - this.rest_length) + this.dampening_constant * (dot(delta_velocity, delta_vec) / length)));
+				return {
+					"force_first_particle": scalar_multiply(force, -1),
+					"force_second_particle": force
+				}
+			}
+		}
+		
+		class ParticleSystem{
+			constructor(particles, springs){
+				this.particles = particles;
+				this.springs = springs;
+			}
+			
+			update(delta_t){
+				this.springs.forEach((spring)=>{
+					const forces = spring.calculate_forces_on_particles();
+					spring.first_particle.force = plus(spring.first_particle.force, forces.force_first_particle);
+					spring.second_particle.force = plus(spring.second_particle.force, forces.force_second_particle);
+				});
+				this.particles.forEach((particle)=>{
+					particle.update_position(delta_t);
+				});
+			}
+		}
+		
+		function integrate_midpoint(current_x, current_v, current_a, delta_t){
+			//return currentX + currentV * deltaT + 0.5f * currentA * (deltaT * deltaT);
+			return plus(plus(current_x, scalar_multiply(current_v, delta_t)), scalar_multiply(current_a, delta_t * delta_t));
+		}
+		
 		const vertex_shader_source = 
 			`// an attribute will receive data from a buffer
 			attribute vec4 position;
@@ -38,7 +114,7 @@
 			}`;
 			
 		const canvas = document.getElementById("c");
-		const gl = canvas.getContext("webgl");
+		const gl = canvas.getContext("webgl", {antialias: true});
 		if (!gl) {
 			alert("No OpenGL!");
 		}
@@ -49,8 +125,8 @@
 		function start_rendering_to_gl_context(canvas, gl){
 			const NEAR = 0.1;
 			const FAR = 1100;
+			
 			gl.clearColor(0, 1, 0, 1);
-			gl.clear(gl.COLOR_BUFFER_BIT);
 			
 			const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertex_shader_source);
 			const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragment_shader_source);
@@ -94,13 +170,29 @@
 			
 			gl.uniformMatrix4fv(mvp_matrix_position, false, vp_matrix);
 			
+			const particle_system = create_quad_with_particle_corners();
+			
+			window.requestAnimationFrame((timestamp)=>draw(timestamp, timestamp, vp_matrix, positionAttributeLocation, mvp_matrix_position, particle_system));
+		}
+		
+		function draw(timestamp, previous_timestamp, vp_matrix, positionAttributeLocation, mvp_matrix_position, particle_system){
+			gl.clear(gl.COLOR_BUFFER_BIT);
+			
+			const delta_t = Math.min((timestamp - previous_timestamp) * 0.001, 0.1);
+			
 			const primitiveType = gl.TRIANGLES;
 			const draw_offset = 0;
 			const count = 3;
-			gl.drawArrays(primitiveType, draw_offset, count);
+			//gl.drawArrays(primitiveType, draw_offset, count);
 
 			const grid_lines = create_bottom_grid_lines(0, 1000, 1/30);
-			render_lines(gl, grid_lines, positionAttributeLocation, vp_matrix, mvp_matrix_position);
+			render_grid(gl, grid_lines, positionAttributeLocation, vp_matrix, mvp_matrix_position);
+			
+			//render_particle(gl, {}, positionAttributeLocation, vp_matrix, mvp_matrix_position);
+			particle_system.update(delta_t);
+			render_particle_system(gl, particle_system, positionAttributeLocation, vp_matrix, mvp_matrix_position);
+			
+			window.requestAnimationFrame((next_timestamp)=>draw(next_timestamp, timestamp, vp_matrix, positionAttributeLocation, mvp_matrix_position, particle_system));
 		}
 		
 		function createShader(gl, type, source) {
@@ -195,7 +287,11 @@
 		}
 		
 		function minus(lhs_vec3, rhs_vec3){
-			return [lhs_vec3[0] - rhs_vec3[0], lhs_vec3[1] - rhs_vec3[1], lhs_vec3[2] - rhs_vec3[2]]
+			return [lhs_vec3[0] - rhs_vec3[0], lhs_vec3[1] - rhs_vec3[1], lhs_vec3[2] - rhs_vec3[2]];
+		}
+		
+		function plus(lhs_vec3, rhs_vec3){
+			return [lhs_vec3[0] + rhs_vec3[0], lhs_vec3[1] + rhs_vec3[1], lhs_vec3[2] + rhs_vec3[2]];
 		}
 		
 		function cross(lhs_vec3, rhs_vec3){
@@ -223,8 +319,12 @@
 			]
 		}
 		
-		function scalar_multiply(vec4, scalar){
-			return [vec4[0]*scalar, vec4[1]*scalar, vec4[2]*scalar, vec4[3]*scalar]
+		function scalar_multiply(vec3, scalar){
+			return [vec3[0]*scalar, vec3[1]*scalar, vec3[2]*scalar]
+		}
+		
+		function scalar_multiply4(vec4, scalar){
+			return [...scalar_multiply(vec4), vec4[3]*scalar]
 		}
 		
 		function row4(mat, row_index){
@@ -270,8 +370,22 @@
 			return lines;
 		}
 		
+		function render_grid(gl, grid_lines, positionAttributeLocation, vp_matrix, mvp_matrix_position){
+			const m_matrix = multiply_sequence([
+				create_translation_matrix([-500, -500, 0]),
+				create_scale_matrix(5, 1, 1),
+				create_translation_matrix([0, 0, -180]),
+				create_rotation_matrix_along_x(-Math.PI/2),
+				create_translation_matrix([0, 0, -500])
+			]);
+			
+			const mvp_matrix = multiply(m_matrix, vp_matrix);
+			
+			render_lines(gl, grid_lines, positionAttributeLocation, mvp_matrix, mvp_matrix_position);
+		}
+		
 		// Shader program should already be set up
-		function render_lines(gl, lines, positionAttributeLocation, vp_matrix, mvp_matrix_position){
+		function render_lines(gl, lines, positionAttributeLocation, mvp_matrix, mvp_matrix_position){
 			const linePositionBuffer = gl.createBuffer();
 			
 			gl.bindBuffer(gl.ARRAY_BUFFER, linePositionBuffer);
@@ -284,15 +398,6 @@
 			const stride = 0;        // 0 = move size * sizeof(type) each iteration
 			const buffer_offset = 0; // start at the beginning of the buffer
 			gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, buffer_offset);
-			
-			const m_matrix = multiply_sequence([
-				create_translation_matrix([0, 0, -180]),
-				create_rotation_matrix_along_x(-Math.PI/2 - Math.PI/8),
-				create_scale_matrix(5, 1, 1),
-				create_translation_matrix([-500 * 5, -50, 0])
-			]);
-			
-			const mvp_matrix = multiply(m_matrix, vp_matrix);
 			
 			gl.uniformMatrix4fv(mvp_matrix_position, false, mvp_matrix);
 			
@@ -316,6 +421,86 @@
 				0, 0, 1, 0,
 				0, 0, 0, 1
 			]
+		}
+		
+		function create_quad_with_particle_corners(){
+			const bottom_left = new Particle([-1, -1, 0], [0, 0, 0], 5, [0, 0, 0]);
+			const bottom_right = new Particle([1.8, -1.4, 0], [0, 0, 0], 5, [0, 0, 0]);
+			const top_right = new Particle([1, 1, 0], [0, 0, 0], 5, [0, 0, 0]);
+			const top_left = new Particle([-1, 1, 0], [0, 0, 0], 5, [0, 0, 0]);
+			
+			const bottom_spring = new Spring(bottom_left, bottom_right, 4, 1, 2);
+			const right_spring = new Spring(bottom_right, top_right, 4, 1, 2);
+			const top_spring = new Spring(top_right, top_left, 4, 1, 2);
+			const left_spring = new Spring(top_left, bottom_left, 4, 1, 2);
+			const diagonal_spring = new Spring(top_left, bottom_right, 4, 1, Math.sqrt(8));
+			
+			return new ParticleSystem(
+				[bottom_left, bottom_right, top_right, top_left], 
+				[bottom_spring, right_spring, top_spring, left_spring, diagonal_spring]
+			);
+			//return new ParticleSystem([bottom_left, bottom_right], [bottom_spring]);
+		}
+		
+		//Shader should already be set up and active
+		function render_particle(gl, particle, positionAttributeLocation, mvp_matrix, mvp_matrix_position){
+			const particlePositionBuffer = gl.createBuffer();
+			
+			//Meant to be rendered as a triangle strip
+			const quad_triangles = [
+				0, 0,
+				0, 1, 
+				1, 0,
+				1, 1
+			];
+			
+			gl.bindBuffer(gl.ARRAY_BUFFER, particlePositionBuffer);
+			
+			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quad_triangles), gl.STATIC_DRAW);
+			
+			const size = 2;          // 2 components per iteration
+			const type = gl.FLOAT;   // the data is 32bit floats
+			const normalize = false; // use the data as is
+			const stride = 0;        // 0 = move size * sizeof(type) each iteration
+			const buffer_offset = 0; // start at the beginning of the buffer
+			gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, buffer_offset);
+			
+			gl.uniformMatrix4fv(mvp_matrix_position, false, mvp_matrix);
+			
+			const primitiveType = gl.TRIANGLE_STRIP;
+			const draw_offset = 0;
+			gl.drawArrays(primitiveType, draw_offset, quad_triangles.length);
+		}
+		
+		function render_particle_system(gl, particle_system, positionAttributeLocation, vp_matrix, mvp_matrix_position){
+			const lines = [];
+			particle_system.springs.forEach((spring)=>{
+				lines.push(spring.first_particle.position[0]);
+				lines.push(spring.first_particle.position[1]);
+				lines.push(spring.second_particle.position[0]);
+				lines.push(spring.second_particle.position[1]);
+			});
+			
+			const m_matrix = multiply_sequence([
+				create_scale_matrix(50, 50, 1),
+				create_translation_matrix([0, 30, -180])
+			]);
+			
+			const mvp_matrix = multiply(m_matrix, vp_matrix);
+			
+			render_lines(gl, lines, positionAttributeLocation, mvp_matrix, mvp_matrix_position);
+			
+			particle_system.particles.forEach((particle)=>{
+				const m_matrix = multiply_sequence([
+					create_translation_matrix([-0.5, -0.5, 0]),
+					create_scale_matrix(10, 10, 1),
+					create_translation_matrix([particle.position[0] * 50, particle.position[1] * 50 + 30, -180])
+				]);
+				
+				const mvp_matrix = multiply(m_matrix, vp_matrix);
+			
+				render_particle(gl, particle, positionAttributeLocation, mvp_matrix, mvp_matrix_position);
+			});
 		}
 		
 		</script>
