@@ -21,11 +21,6 @@
 			}
 			
 			update_position(delta_t){
-				//glm::vec3 acceleration = force/mass;
-				//velocity = acceleration * deltaT;
-				//
-				//glm::vec3 newPosition = Integrator::integrateMidpoint(position, velocity, acceleration, deltaT);
-				//position = newPosition;
 				const acceleration = scalar_multiply(this.force, 1/this.mass);
 				this.velocity = scalar_multiply(acceleration, delta_t);
 				const new_position = integrate_midpoint(this.position, this.velocity, acceleration, delta_t);
@@ -43,16 +38,6 @@
 			}
 			
 			calculate_forces_on_particles(){
-				//glm::vec3 deltaVec = p1->getPosition() - p2->getPosition();
-				//float length = glm::distance(p1->getPosition(), p2->getPosition());
-				//glm::vec3 deltaVelocity = p1->getVelocity() - p2->getVelocity();
-				//
-				//glm::vec3 forceB = (springConstant * (length - restLength) + dampingConstant * (glm::dot(deltaVelocity, deltaVec) / length)) * deltaVec/length,
-				//		forceA = forceB*-1.0f;
-				//
-				//p1->addForce(forceA);
-				//p2->addForce(forceB);
-				
 				const delta_vec = minus(this.first_particle.position, this.second_particle.position);
 				const length = magnitude(delta_vec);
 				const delta_velocity = minus(this.first_particle.velocity, this.second_particle.velocity);
@@ -84,7 +69,6 @@
 		}
 		
 		function integrate_midpoint(current_x, current_v, current_a, delta_t){
-			//return currentX + currentV * deltaT + 0.5f * currentA * (deltaT * deltaT);
 			return plus(plus(current_x, scalar_multiply(current_v, delta_t)), scalar_multiply(current_a, delta_t * delta_t));
 		}
 		
@@ -170,29 +154,32 @@
 			
 			gl.uniformMatrix4fv(mvp_matrix_position, false, vp_matrix);
 			
-			const particle_system = create_quad_with_particle_corners();
+			const active_shader = {
+				"positionAttributeLocation": positionAttributeLocation,
+				"mvp_matrix_position": mvp_matrix_position
+			};
 			
-			window.requestAnimationFrame((timestamp)=>draw(timestamp, timestamp, vp_matrix, positionAttributeLocation, mvp_matrix_position, particle_system));
+			const elements_to_render = {
+				"particle_system": create_quad_with_particle_corners(),
+				"grid_lines": create_bottom_grid_lines(0, 1000, 1/30)
+			};
+			
+			const render_buffers = {}; //to be filled in during rendering
+			
+			window.requestAnimationFrame((timestamp)=>draw(timestamp, timestamp, vp_matrix, active_shader, elements_to_render, render_buffers));
 		}
 		
-		function draw(timestamp, previous_timestamp, vp_matrix, positionAttributeLocation, mvp_matrix_position, particle_system){
+		function draw(timestamp, previous_timestamp, vp_matrix, active_shader, elements_to_render, render_buffers){
 			gl.clear(gl.COLOR_BUFFER_BIT);
 			
-			const delta_t = Math.min((timestamp - previous_timestamp) * 0.001, 0.1);
-			
-			const primitiveType = gl.TRIANGLES;
-			const draw_offset = 0;
-			const count = 3;
-			//gl.drawArrays(primitiveType, draw_offset, count);
+			const delta_t = Math.min((timestamp - previous_timestamp) * 0.006, 0.6);
 
-			const grid_lines = create_bottom_grid_lines(0, 1000, 1/30);
-			render_grid(gl, grid_lines, positionAttributeLocation, vp_matrix, mvp_matrix_position);
+			render_grid(gl, elements_to_render.grid_lines, active_shader.positionAttributeLocation, vp_matrix, active_shader.mvp_matrix_position, render_buffers);
 			
-			//render_particle(gl, {}, positionAttributeLocation, vp_matrix, mvp_matrix_position);
-			particle_system.update(delta_t);
-			render_particle_system(gl, particle_system, positionAttributeLocation, vp_matrix, mvp_matrix_position);
+			elements_to_render.particle_system.update(delta_t);
+			render_particle_system(gl, elements_to_render.particle_system, active_shader.positionAttributeLocation, vp_matrix, active_shader.mvp_matrix_position, render_buffers);
 			
-			window.requestAnimationFrame((next_timestamp)=>draw(next_timestamp, timestamp, vp_matrix, positionAttributeLocation, mvp_matrix_position, particle_system));
+			window.requestAnimationFrame((next_timestamp)=>draw(next_timestamp, timestamp, vp_matrix, active_shader, elements_to_render, render_buffers));
 		}
 		
 		function createShader(gl, type, source) {
@@ -370,28 +357,48 @@
 			return lines;
 		}
 		
-		function render_grid(gl, grid_lines, positionAttributeLocation, vp_matrix, mvp_matrix_position){
-			const m_matrix = multiply_sequence([
-				create_translation_matrix([-500, -500, 0]),
-				create_scale_matrix(5, 1, 1),
-				create_translation_matrix([0, 0, -180]),
-				create_rotation_matrix_along_x(-Math.PI/2),
-				create_translation_matrix([0, 0, -500])
-			]);
+		function render_grid(gl, grid_lines, positionAttributeLocation, vp_matrix, mvp_matrix_position, render_buffers){
 			
-			const mvp_matrix = multiply(m_matrix, vp_matrix);
+			if(!("render_grid_mvp_matrix" in render_buffers)){
+				const m_matrix = multiply_sequence([
+					create_translation_matrix([-500, -500, 0]),
+					create_scale_matrix(5, 1, 1),
+					create_translation_matrix([0, 0, -180]),
+					create_rotation_matrix_along_x(-Math.PI/2),
+					create_translation_matrix([0, 0, -500])
+				]);
+				
+				const mvp_matrix = multiply(m_matrix, vp_matrix);
+				
+				render_buffers.render_grid_mvp_matrix = mvp_matrix;
+			}
 			
-			render_lines(gl, grid_lines, positionAttributeLocation, mvp_matrix, mvp_matrix_position);
+			if(!("render_grid_gl_lines_buffer" in render_buffers)){
+				render_buffers.render_grid_gl_lines_buffer = buffer_lines(gl, grid_lines);
+			}else{
+				gl.bindBuffer(gl.ARRAY_BUFFER, render_buffers.render_grid_gl_lines_buffer);
+			}
+			
+						
+			render_lines(
+				gl, 
+				grid_lines, 
+				positionAttributeLocation, 
+				render_buffers.render_grid_mvp_matrix, 
+				mvp_matrix_position, 
+				render_buffers.render_grid_gl_lines_buffer);
 		}
 		
-		// Shader program should already be set up
-		function render_lines(gl, lines, positionAttributeLocation, mvp_matrix, mvp_matrix_position){
-			const linePositionBuffer = gl.createBuffer();
-			
-			gl.bindBuffer(gl.ARRAY_BUFFER, linePositionBuffer);
-			
-			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lines), gl.STATIC_DRAW);
-			
+		// Returns a handle to a buffer, it is guaranteed that buffer is bound to gl.ARRAY_BUFFER when this function is done
+		function buffer_lines(gl, lines, buffer_type = gl.STATIC_DRAW){
+			const buffer = gl.createBuffer();
+			gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lines), buffer_type);
+			return buffer;
+		}
+		
+		// Shader program should already be set up, line_position_buffer should be bound to gl.ARRAY_BUFFER
+		function render_lines(gl, lines, positionAttributeLocation, mvp_matrix, mvp_matrix_position, line_position_buffer){
 			const size = 2;          // 2 components per iteration
 			const type = gl.FLOAT;   // the data is 32bit floats
 			const normalize = false; // use the data as is
@@ -425,7 +432,7 @@
 		
 		function create_quad_with_particle_corners(){
 			const bottom_left = new Particle([-1, -1, 0], [0, 0, 0], 5, [0, 0, 0]);
-			const bottom_right = new Particle([1.8, -1.4, 0], [0, 0, 0], 5, [0, 0, 0]);
+			const bottom_right = new Particle([1, -1, 0], [0, 0, 0], 5, [0, 0, 0]);
 			const top_right = new Particle([1, 1, 0], [0, 0, 0], 5, [0, 0, 0]);
 			const top_left = new Particle([-1, 1, 0], [0, 0, 0], 5, [0, 0, 0]);
 			
@@ -439,25 +446,10 @@
 				[bottom_left, bottom_right, top_right, top_left], 
 				[bottom_spring, right_spring, top_spring, left_spring, diagonal_spring]
 			);
-			//return new ParticleSystem([bottom_left, bottom_right], [bottom_spring]);
 		}
 		
-		//Shader should already be set up and active
-		function render_particle(gl, particle, positionAttributeLocation, mvp_matrix, mvp_matrix_position){
-			const particlePositionBuffer = gl.createBuffer();
-			
-			//Meant to be rendered as a triangle strip
-			const quad_triangles = [
-				0, 0,
-				0, 1, 
-				1, 0,
-				1, 1
-			];
-			
-			gl.bindBuffer(gl.ARRAY_BUFFER, particlePositionBuffer);
-			
-			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quad_triangles), gl.STATIC_DRAW);
-			
+		//Shader should already be set up and active, particle_position_buffer should be bound to ARRAY_BUFFER
+		function render_particle(gl, particle, quad_triangles, positionAttributeLocation, mvp_matrix, mvp_matrix_position, particle_position_buffer){
 			const size = 2;          // 2 components per iteration
 			const type = gl.FLOAT;   // the data is 32bit floats
 			const normalize = false; // use the data as is
@@ -472,7 +464,7 @@
 			gl.drawArrays(primitiveType, draw_offset, quad_triangles.length);
 		}
 		
-		function render_particle_system(gl, particle_system, positionAttributeLocation, vp_matrix, mvp_matrix_position){
+		function render_particle_system(gl, particle_system, positionAttributeLocation, vp_matrix, mvp_matrix_position, render_buffers){
 			const lines = [];
 			particle_system.springs.forEach((spring)=>{
 				lines.push(spring.first_particle.position[0]);
@@ -488,9 +480,33 @@
 			
 			const mvp_matrix = multiply(m_matrix, vp_matrix);
 			
-			render_lines(gl, lines, positionAttributeLocation, mvp_matrix, mvp_matrix_position);
+			if(!("render_particle_system_lines_buffer" in render_buffers)){
+				render_buffers.render_particle_system_lines_buffer = buffer_lines(gl, lines);
+			}else{
+				gl.bindBuffer(gl.ARRAY_BUFFER, render_buffers.render_particle_system_lines_buffer);
+				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lines), gl.STATIC_DRAW);
+			}
 			
-			particle_system.particles.forEach((particle)=>{
+			render_lines(gl, lines, positionAttributeLocation, mvp_matrix, mvp_matrix_position, render_buffers.render_particle_system_lines_buffer);
+			
+			//Meant to be rendered as a triangle strip
+			const quad_triangles = [
+				0, 0,
+				0, 1, 
+				1, 0,
+				1, 1
+			];
+			
+			if(!("render_particle_system_particle_buffer" in render_buffers)){
+				render_buffers.render_particle_system_particle_buffer = gl.createBuffer();
+				
+				gl.bindBuffer(gl.ARRAY_BUFFER, render_buffers.render_particle_system_particle_buffer);
+				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quad_triangles), gl.STATIC_DRAW);
+			}else{
+				gl.bindBuffer(gl.ARRAY_BUFFER, render_buffers.render_particle_system_particle_buffer);
+			}
+			
+			particle_system.particles.forEach((particle, index)=>{
 				const m_matrix = multiply_sequence([
 					create_translation_matrix([-0.5, -0.5, 0]),
 					create_scale_matrix(10, 10, 1),
@@ -499,7 +515,8 @@
 				
 				const mvp_matrix = multiply(m_matrix, vp_matrix);
 			
-				render_particle(gl, particle, positionAttributeLocation, mvp_matrix, mvp_matrix_position);
+			
+				render_particle(gl, particle, quad_triangles, positionAttributeLocation, mvp_matrix, mvp_matrix_position, render_buffers.render_particle_system_particle_buffer);
 			});
 		}
 		
