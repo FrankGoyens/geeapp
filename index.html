@@ -98,15 +98,40 @@
 			}`;
 			
 		const canvas = document.getElementById("c");
+		const canvas_picking = {
+			// set by the mouse event handler, reset/consumed by the render loop
+			"pick_request": null,
+			"pick_drag_request": null,
+			"pick_reset_request": false
+		};
+		bind_mouse_events_to_canvas(canvas, canvas_picking);
+		
+		function bind_mouse_events_to_canvas(canvas, canvas_picking){
+			canvas.addEventListener("mousedown", (event)=>{	
+				console.log("mouse down");
+				canvas_picking.pick_request = {"x": event.clientX, "y": event.clientY};
+			});
+			
+			canvas.addEventListener("mouseup", (event)=>{	
+				console.log("mouse up");
+				canvas_picking.pick_reset_request = true;
+			});
+			
+			canvas.addEventListener("mousemove", (event)=>{	
+				console.log("mouse move");
+				canvas_picking.pick_drag_request = {"x": event.clientX, "y": event.clientY};
+			});
+		}
+		
 		const gl = canvas.getContext("webgl", {antialias: true});
 		if (!gl) {
 			alert("No OpenGL!");
 		}
 		else{
-			start_rendering_to_gl_context(canvas, gl);
+			start_rendering_to_gl_context(canvas, canvas_picking, gl);
 		}
 		
-		function start_rendering_to_gl_context(canvas, gl){
+		function start_rendering_to_gl_context(canvas, canvas_picking, gl){
 			const NEAR = 0.1;
 			const FAR = 1100;
 			
@@ -146,21 +171,35 @@
 			};
 			
 			const render_buffers = {}; //to be filled in during rendering
+			const frame_query = {
+				// When null, no extra routine would be done to enable picking, 
+				// when not null, this field is a function that takes two arguments: 
+				// 1. an array of triangles in viewport coordinates, provided by the lower level rendering calls
+				// 2. the object corresponding to the aforementioned triangles
+				"picking_query": null
+			};
 			
-			window.requestAnimationFrame((timestamp)=>draw(timestamp, timestamp, vp_matrix, active_shader, elements_to_render, render_buffers));
+			window.requestAnimationFrame((timestamp)=>draw(timestamp, timestamp, vp_matrix, active_shader, elements_to_render, render_buffers, frame_query));
 		}
 		
-		function draw(timestamp, previous_timestamp, vp_matrix, active_shader, elements_to_render, render_buffers){
+		function draw(timestamp, previous_timestamp, vp_matrix, active_shader, elements_to_render, render_buffers, frame_query){
 			gl.clear(gl.COLOR_BUFFER_BIT);
 			
 			const delta_t = Math.min((timestamp - previous_timestamp) * 0.006, 0.6);
 
+			// TODO set this query based on what canvas_picking has set
+			//frame_query.picking_query = (triangle, picked_item)=>{
+			//	
+			//};
+
 			render_grid(gl, elements_to_render.grid_lines, active_shader.positionAttributeLocation, vp_matrix, active_shader.mvp_matrix_position, render_buffers);
 			
 			elements_to_render.particle_system.update(delta_t);
-			render_particle_system(gl, elements_to_render.particle_system, active_shader.positionAttributeLocation, vp_matrix, active_shader.mvp_matrix_position, render_buffers);
+			render_particle_system(gl, elements_to_render.particle_system, active_shader.positionAttributeLocation, vp_matrix, active_shader.mvp_matrix_position, render_buffers, frame_query);
 			
-			window.requestAnimationFrame((next_timestamp)=>draw(next_timestamp, timestamp, vp_matrix, active_shader, elements_to_render, render_buffers));
+			frame_query.picking_query = null;
+			
+			window.requestAnimationFrame((next_timestamp)=>draw(next_timestamp, timestamp, vp_matrix, active_shader, elements_to_render, render_buffers, frame_query));
 		}
 		
 		function createShader(gl, type, source) {
@@ -292,7 +331,7 @@
 		}
 		
 		function scalar_multiply4(vec4, scalar){
-			return [...scalar_multiply(vec4), vec4[3]*scalar]
+			return [...scalar_multiply(vec4, scalar), vec4[3]*scalar]
 		}
 		
 		function row4(mat, row_index){
@@ -445,7 +484,7 @@
 			gl.drawArrays(primitiveType, draw_offset, quad_triangles.length);
 		}
 		
-		function render_particle_system(gl, particle_system, positionAttributeLocation, vp_matrix, mvp_matrix_position, render_buffers){
+		function render_particle_system(gl, particle_system, positionAttributeLocation, vp_matrix, mvp_matrix_position, render_buffers, frame_query){
 			const lines = [];
 			particle_system.springs.forEach((spring)=>{
 				lines.push(spring.first_particle.position[0]);
@@ -496,9 +535,30 @@
 				
 				const mvp_matrix = multiply(m_matrix, vp_matrix);
 			
+				if(frame_query.picking_query!=null){
+					provide_particle_triangles_to_picking_query(particle, quad_triangles, mvp_matrix, frame_query.picking_query);
+				}
 			
 				render_particle(gl, particle, quad_triangles, positionAttributeLocation, mvp_matrix, mvp_matrix_position, render_buffers.render_particle_system_particle_buffer);
 			});
+		}
+		
+		function provide_particle_triangles_to_picking_query(particle, quad_triangles, mvp_matrix, picking_query){
+			const grouped_quad_triangles = [];
+			for(let i=0; i<quad_triangles.length;i+=2){
+				grouped_quad_triangles.push([quad_triangles[i], quad_triangles[i+1]]);
+			}
+			
+			const viewport_quad_triangles = [];
+			
+			grouped_quad_triangles.forEach((position)=>{
+				let viewport_position = multiply_4x4_4x1(mvp_matrix, [...position, 0, 1]);
+				viewport_position = scalar_multiply4(viewport_position, 1/viewport_position[3]);
+				viewport_quad_triangles.push(viewport_position.slice(0, 3));
+			});
+			
+			picking_query(viewport_quad_triangles.slice(0, 3), particle);
+			picking_query(viewport_quad_triangles.slice(1, 4), particle);
 		}
 		
 		</script>
