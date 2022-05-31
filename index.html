@@ -109,7 +109,8 @@
 		function bind_mouse_events_to_canvas(canvas, canvas_picking){
 			canvas.addEventListener("mousedown", (event)=>{	
 				console.log("mouse down");
-				canvas_picking.pick_request = {"x": event.clientX, "y": event.clientY};
+				const bounds = canvas.getBoundingClientRect();
+				canvas_picking.pick_request = {"x": event.x - bounds.left, "y": event.y - bounds.top};
 			});
 			
 			canvas.addEventListener("mouseup", (event)=>{	
@@ -179,18 +180,19 @@
 				"picking_query": null
 			};
 			
-			window.requestAnimationFrame((timestamp)=>draw(timestamp, timestamp, vp_matrix, active_shader, elements_to_render, render_buffers, frame_query));
+			window.requestAnimationFrame((timestamp)=>draw(timestamp, timestamp, vp_matrix, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking));
 		}
 		
-		function draw(timestamp, previous_timestamp, vp_matrix, active_shader, elements_to_render, render_buffers, frame_query){
+		function draw(timestamp, previous_timestamp, vp_matrix, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking){
 			gl.clear(gl.COLOR_BUFFER_BIT);
 			
 			const delta_t = Math.min((timestamp - previous_timestamp) * 0.006, 0.6);
 
-			// TODO set this query based on what canvas_picking has set
-			//frame_query.picking_query = (triangle, picked_item)=>{
-			//	
-			//};
+			const pick_result = [];
+			if(canvas_picking.pick_request!=null){
+				frame_query.picking_query = create_picking_query(canvas_picking.pick_request, pick_result, canvas);
+				canvas_picking.pick_request = null;
+			}
 
 			render_grid(gl, elements_to_render.grid_lines, active_shader.positionAttributeLocation, vp_matrix, active_shader.mvp_matrix_position, render_buffers);
 			
@@ -198,8 +200,43 @@
 			render_particle_system(gl, elements_to_render.particle_system, active_shader.positionAttributeLocation, vp_matrix, active_shader.mvp_matrix_position, render_buffers, frame_query);
 			
 			frame_query.picking_query = null;
+			if(pick_result.length>0){
+				console.log(pick_result);
+			}
 			
-			window.requestAnimationFrame((next_timestamp)=>draw(next_timestamp, timestamp, vp_matrix, active_shader, elements_to_render, render_buffers, frame_query));
+			window.requestAnimationFrame((next_timestamp)=>draw(next_timestamp, timestamp, vp_matrix, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking));
+		}
+		
+		function create_picking_query(pick_request, pick_result, canvas){
+			return (triangle, picked_item)=>{
+				if(triangle_includes_point2d(triangle, normalize_viewport_coordinates(pick_request.x, pick_request.y, canvas))){
+					pick_result.push(picked_item);
+				}
+			};
+		}
+		
+		// Z will be set as 0
+		function normalize_viewport_coordinates(viewport_x, viewport_y, canvas){
+			return [
+				viewport_x / canvas.width * 2 - 1,
+				(canvas.height - viewport_y) / canvas.height * 2 - 1,
+				0
+			];
+		}
+		
+		function triangle_includes_point2d(triangle, point2d){
+			const first_sign = sign(point2d, triangle[0], triangle[1]);
+			const second_sign = sign(point2d, triangle[1], triangle[2]);
+			const third_sign = sign(point2d, triangle[2], triangle[0]);
+			
+			const has_negative = (first_sign < 0) || (second_sign < 0) || (third_sign < 0);
+			const has_positive = (first_sign > 0) || (second_sign > 0) || (third_sign > 0);
+			
+			return !(has_negative && has_positive);
+		}
+		
+		function sign(point2d, startpoint, endpoint){
+			return (point2d[0] - endpoint[0]) * (startpoint[1] - endpoint[1]) - (startpoint[0] - endpoint[0]) * (point2d[1] - endpoint[1]);
 		}
 		
 		function createShader(gl, type, source) {
