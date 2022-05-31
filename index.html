@@ -7,6 +7,7 @@
 			height: 720px;
 		}
 	</style>
+	<script src="gl-matrix-min.js"></script>
 	</head>
 	<body>
 		<canvas width="1280" height="720" id="c"/>
@@ -107,20 +108,18 @@
 		bind_mouse_events_to_canvas(canvas, canvas_picking);
 		
 		function bind_mouse_events_to_canvas(canvas, canvas_picking){
-			canvas.addEventListener("mousedown", (event)=>{	
-				console.log("mouse down");
+			canvas.addEventListener("mousedown", (event)=>{
 				const bounds = canvas.getBoundingClientRect();
 				canvas_picking.pick_request = {"x": event.x - bounds.left, "y": event.y - bounds.top};
 			});
 			
-			canvas.addEventListener("mouseup", (event)=>{	
-				console.log("mouse up");
+			canvas.addEventListener("mouseup", (event)=>{
 				canvas_picking.pick_reset_request = true;
 			});
 			
-			canvas.addEventListener("mousemove", (event)=>{	
-				console.log("mouse move");
-				canvas_picking.pick_drag_request = {"x": event.clientX, "y": event.clientY};
+			canvas.addEventListener("mousemove", (event)=>{
+				const bounds = canvas.getBoundingClientRect();
+				canvas_picking.pick_drag_request = {"x": event.x - bounds.left, "y": event.y - bounds.top};
 			});
 		}
 		
@@ -175,9 +174,10 @@
 			const frame_query = {
 				// When null, no extra routine would be done to enable picking, 
 				// when not null, this field is a function that takes two arguments: 
-				// 1. an array of triangles in viewport coordinates, provided by the lower level rendering calls
+				// 1. an array of triangles in normalized device coordinates, provided by the lower level rendering calls
 				// 2. the object corresponding to the aforementioned triangles
-				"picking_query": null
+				"picking_query": null,
+				"picking_query_result": []
 			};
 			
 			window.requestAnimationFrame((timestamp)=>draw(timestamp, timestamp, vp_matrix, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking));
@@ -188,11 +188,7 @@
 			
 			const delta_t = Math.min((timestamp - previous_timestamp) * 0.006, 0.6);
 
-			const pick_result = [];
-			if(canvas_picking.pick_request!=null){
-				frame_query.picking_query = create_picking_query(canvas_picking.pick_request, pick_result, canvas);
-				canvas_picking.pick_request = null;
-			}
+			consume_canvas_picking_request(canvas_picking, frame_query, canvas, vp_matrix);
 
 			render_grid(gl, elements_to_render.grid_lines, active_shader.positionAttributeLocation, vp_matrix, active_shader.mvp_matrix_position, render_buffers);
 			
@@ -200,17 +196,67 @@
 			render_particle_system(gl, elements_to_render.particle_system, active_shader.positionAttributeLocation, vp_matrix, active_shader.mvp_matrix_position, render_buffers, frame_query);
 			
 			frame_query.picking_query = null;
-			if(pick_result.length>0){
-				console.log(pick_result);
-			}
 			
 			window.requestAnimationFrame((next_timestamp)=>draw(next_timestamp, timestamp, vp_matrix, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking));
 		}
 		
-		function create_picking_query(pick_request, pick_result, canvas){
+		function consume_canvas_picking_request(canvas_picking, frame_query, canvas, vp_matrix){
+			if(canvas_picking.pick_reset_request){ // canvas requests clearing all previously picked objects
+				canvas_picking.pick_reset_request = false;
+				canvas_picking.pick_drag_request = null;
+				canvas_picking.pick_request = null;
+				frame_query.picking_query_result = [];
+			}else if(frame_query.picking_query_result.length>0 
+					&& canvas_picking.pick_drag_request!=null ){ // There are previously picked objects, and the canvas requests dragging them
+				const picked_scene_element = frame_query.picking_query_result[0];
+				if("particle" in picked_scene_element && "world_to_normalized" in picked_scene_element){
+					// TODO move the particle by setting its position using the pick drag coordinates, which are first transformed by the inverted mvp_matrix
+					//const mvp_matrix = multiply(picked_scene_element.world_to_normalized, vp_matrix);
+					const normalized_to_viewport = invert_mat4(picked_scene_element.world_to_normalized);
+					const normalized_mouse_position = normalize_viewport_coordinates(canvas_picking.pick_drag_request.x, canvas_picking.pick_drag_request.y, canvas);
+					normalized_mouse_position[2] = picked_scene_element.depth;
+					let mouse_in_world = multiply_4x4_4x1(normalized_to_viewport, [...normalized_mouse_position, 1]);
+					mouse_in_world = scalar_multiply4(mouse_in_world, 1/mouse_in_world[3]);
+					mouse_in_world[0] /= 50;
+					mouse_in_world[1] = (mouse_in_world[1] - 30) / 50;
+					mouse_in_world[2] += 180;
+					picked_scene_element.particle.position[0] = mouse_in_world[0];
+					picked_scene_element.particle.position[1] = mouse_in_world[1];
+					picked_scene_element.particle.force = [0,0,0];
+				}
+				canvas_picking.pick_drag_request;
+				
+			}
+			else if(canvas_picking.pick_request!=null){ // No reset was requested, no items were previously picked, canvas requests a new pick
+				frame_query.picking_query_result = [];
+				frame_query.picking_query = create_picking_query(canvas_picking.pick_request, frame_query, canvas);
+				canvas_picking.pick_request = null;
+			}
+		}
+		
+		///TEST
+		const m_matrix = multiply_sequence([
+			create_scale_matrix(50, 50, 1),
+			create_translation_matrix([0, 30, -180])
+		]);
+		
+		const m_matrix_inverted = invert_mat4(m_matrix);
+		const m_matrix_inverted_twice = invert_mat4(m_matrix_inverted);
+		///END TEST
+		// TODO put tests in proper unit test framework
+		
+		function invert_mat4(mat4){
+			const glmatrix_mat4 = glMatrix.mat4.fromValues(...mat4);
+			const glmatrix_mat4_inverted = glMatrix.mat4.create();
+			glMatrix.mat4.invert(glmatrix_mat4_inverted, glmatrix_mat4);
+			return [...glmatrix_mat4_inverted];
+			
+		}
+		
+		function create_picking_query(pick_request, frame_query, canvas){
 			return (triangle, picked_item)=>{
 				if(triangle_includes_point2d(triangle, normalize_viewport_coordinates(pick_request.x, pick_request.y, canvas))){
-					pick_result.push(picked_item);
+					frame_query.picking_query_result.push(picked_item);
 				}
 			};
 		}
@@ -467,7 +513,7 @@
 			
 			const primitiveType = gl.LINES;
 			const draw_offset = 0;
-			gl.drawArrays(primitiveType, draw_offset, lines.length);
+			gl.drawArrays(primitiveType, draw_offset, lines.length/size);
 		}
 		
 		function multiply_sequence(sequence){
@@ -518,7 +564,7 @@
 			
 			const primitiveType = gl.TRIANGLE_STRIP;
 			const draw_offset = 0;
-			gl.drawArrays(primitiveType, draw_offset, quad_triangles.length);
+			gl.drawArrays(primitiveType, draw_offset, quad_triangles.length/size);
 		}
 		
 		function render_particle_system(gl, particle_system, positionAttributeLocation, vp_matrix, mvp_matrix_position, render_buffers, frame_query){
@@ -573,29 +619,35 @@
 				const mvp_matrix = multiply(m_matrix, vp_matrix);
 			
 				if(frame_query.picking_query!=null){
-					provide_particle_triangles_to_picking_query(particle, quad_triangles, mvp_matrix, frame_query.picking_query);
+					provide_particle_triangles_to_picking_query(particle, quad_triangles, m_matrix, vp_matrix, frame_query.picking_query);
 				}
 			
 				render_particle(gl, particle, quad_triangles, positionAttributeLocation, mvp_matrix, mvp_matrix_position, render_buffers.render_particle_system_particle_buffer);
 			});
 		}
 		
-		function provide_particle_triangles_to_picking_query(particle, quad_triangles, mvp_matrix, picking_query){
+		function provide_particle_triangles_to_picking_query(particle, quad_triangles, m_matrix, vp_matrix, picking_query){
 			const grouped_quad_triangles = [];
 			for(let i=0; i<quad_triangles.length;i+=2){
 				grouped_quad_triangles.push([quad_triangles[i], quad_triangles[i+1]]);
 			}
 			
-			const viewport_quad_triangles = [];
+			const normalized_quad_triangles = [];
+			const mvp_matrix = multiply(m_matrix, vp_matrix);
+			const mvp_matrix_inverted = invert_mat4(mvp_matrix);
 			
 			grouped_quad_triangles.forEach((position)=>{
 				let viewport_position = multiply_4x4_4x1(mvp_matrix, [...position, 0, 1]);
 				viewport_position = scalar_multiply4(viewport_position, 1/viewport_position[3]);
-				viewport_quad_triangles.push(viewport_position.slice(0, 3));
+				let world_position = multiply_4x4_4x1(mvp_matrix_inverted, viewport_position);
+				world_position = scalar_multiply4(world_position, 1/world_position[3]);
+				normalized_quad_triangles.push(viewport_position.slice(0, 3));
 			});
 			
-			picking_query(viewport_quad_triangles.slice(0, 3), particle);
-			picking_query(viewport_quad_triangles.slice(1, 4), particle);
+			const pick_result_object = {"particle": particle, "world_to_normalized": vp_matrix, "depth": normalized_quad_triangles[0][2]};
+			
+			picking_query(normalized_quad_triangles.slice(0, 3), pick_result_object);
+			picking_query(normalized_quad_triangles.slice(1, 4), pick_result_object);
 		}
 		
 		</script>
