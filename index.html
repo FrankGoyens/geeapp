@@ -356,10 +356,10 @@
 		
 		function multiply_4x4_4x1(mat, vec){
 			return [
-				dot4(row4(mat, 0), vec),
-				dot4(row4(mat, 1), vec),
-				dot4(row4(mat, 2), vec),
-				dot4(row4(mat, 3), vec)
+				dot4(col4(mat, 0), vec),
+				dot4(col4(mat, 1), vec),
+				dot4(col4(mat, 2), vec),
+				dot4(col4(mat, 3), vec)
 			]
 		}
 		
