@@ -232,17 +232,6 @@
 			}
 		}
 		
-		///TEST
-		const m_matrix = multiply_sequence([
-			create_scale_matrix(50, 50, 1),
-			create_translation_matrix([0, 30, -180])
-		]);
-		
-		const m_matrix_inverted = invert_mat4(m_matrix);
-		const m_matrix_inverted_twice = invert_mat4(m_matrix_inverted);
-		///END TEST
-		// TODO put tests in proper unit test framework
-		
 		function invert_mat4(mat4){
 			const glmatrix_mat4 = glMatrix.mat4.fromValues(...mat4);
 			const glmatrix_mat4_inverted = glMatrix.mat4.create();
