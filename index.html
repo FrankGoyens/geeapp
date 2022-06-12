@@ -202,10 +202,7 @@
 		
 		function consume_canvas_picking_request(canvas_picking, frame_query, canvas, vp_matrix){
 			if(canvas_picking.pick_reset_request){ // canvas requests clearing all previously picked objects
-				canvas_picking.pick_reset_request = false;
-				canvas_picking.pick_drag_request = null;
-				canvas_picking.pick_request = null;
-				frame_query.picking_query_result = [];
+				clear_picking_request(canvas_picking, frame_query);
 			}else if(frame_query.picking_query_result.length>0 
 					&& canvas_picking.pick_drag_request!=null ){ // There are previously picked objects, and the canvas requests dragging them
 				const picked_scene_element = frame_query.picking_query_result[0];
@@ -228,6 +225,13 @@
 				frame_query.picking_query = create_picking_query(canvas_picking.pick_request, frame_query, canvas);
 				canvas_picking.pick_request = null;
 			}
+		}
+		
+		function clear_picking_request(canvas_picking, frame_query){
+			canvas_picking.pick_reset_request = false;
+			canvas_picking.pick_drag_request = null;
+			canvas_picking.pick_request = null;
+			frame_query.picking_query_result = [];
 		}
 		
 		function invert_mat4(mat4){
