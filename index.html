@@ -217,9 +217,7 @@
 					normalized_mouse_position[2] = picked_scene_element.depth;
 					let mouse_in_world = multiply_4x4_4x1(normalized_to_viewport, [...normalized_mouse_position, 1]);
 					mouse_in_world = scalar_multiply4(mouse_in_world, 1/mouse_in_world[3]);
-					mouse_in_world[0] /= 50;
-					mouse_in_world[1] = (mouse_in_world[1] - 30) / 50;
-					mouse_in_world[2] += 180;
+					mouse_in_world = deflate_particle_position(mouse_in_world);
 					picked_scene_element.particle.position[0] = mouse_in_world[0];
 					picked_scene_element.particle.position[1] = mouse_in_world[1];
 					picked_scene_element.particle.force = [0,0,0];
@@ -613,7 +611,7 @@
 				const m_matrix = multiply_sequence([
 					create_translation_matrix([-0.5, -0.5, 0]),
 					create_scale_matrix(10, 10, 1),
-					create_translation_matrix([particle.position[0] * 50, particle.position[1] * 50 + 30, -180])
+					create_translation_matrix(inflate_particle_position(particle.position))
 				]);
 				
 				const mvp_matrix = multiply(m_matrix, vp_matrix);
@@ -624,6 +622,16 @@
 			
 				render_particle(gl, particle, quad_triangles, positionAttributeLocation, mvp_matrix, mvp_matrix_position, render_buffers.render_particle_system_particle_buffer);
 			});
+		}
+		
+		function inflate_particle_position(particle_position){
+			return [particle_position[0] * 50, particle_position[1] * 50 + 30, particle_position[2] - 180];
+		}
+		
+		// This should do the exact opposite of apply_particle_position, important for picking and dragging to work
+		// Because when picking/dragging, the mouse position has to be transformed into particle position space
+		function deflate_particle_position(particle_position){
+			return [particle_position[0] / 50, (particle_position[1] - 30) / 50, particle_position[2] + 180];
 		}
 		
 		function provide_particle_triangles_to_picking_query(particle, quad_triangles, m_matrix, vp_matrix, picking_query){
