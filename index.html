@@ -166,7 +166,7 @@
 			};
 			
 			const elements_to_render = {
-				"particle_system": create_quad_with_particle_corners(),
+				"particle_system": create_cube_with_particle_corners(),
 				"grid_lines": create_bottom_grid_lines(0, 1000, 1/30)
 			};
 			
@@ -478,7 +478,8 @@
 				positionAttributeLocation, 
 				render_buffers.render_grid_mvp_matrix, 
 				mvp_matrix_position, 
-				render_buffers.render_grid_gl_lines_buffer);
+				render_buffers.render_grid_gl_lines_buffer,
+				2);
 		}
 		
 		// Returns a handle to a buffer, it is guaranteed that buffer is bound to gl.ARRAY_BUFFER when this function is done
@@ -490,8 +491,8 @@
 		}
 		
 		// Shader program should already be set up, line_position_buffer should be bound to gl.ARRAY_BUFFER
-		function render_lines(gl, lines, positionAttributeLocation, mvp_matrix, mvp_matrix_position, line_position_buffer){
-			const size = 2;          // 2 components per iteration
+		function render_lines(gl, lines, positionAttributeLocation, mvp_matrix, mvp_matrix_position, line_position_buffer, components_per_coordinate){
+			const size = components_per_coordinate;
 			const type = gl.FLOAT;   // the data is 32bit floats
 			const normalize = false; // use the data as is
 			const stride = 0;        // 0 = move size * sizeof(type) each iteration
@@ -519,25 +520,43 @@
 				0, 1, 0, 0,
 				0, 0, 1, 0,
 				0, 0, 0, 1
-			]
+			];
 		}
 		
-		function create_quad_with_particle_corners(){
-			const bottom_left = new Particle([-1, -1, 0], [0, 0, 0], 5, [0, 0, 0]);
-			const bottom_right = new Particle([1, -1, 0], [0, 0, 0], 5, [0, 0, 0]);
-			const top_right = new Particle([1, 1, 0], [0, 0, 0], 5, [0, 0, 0]);
-			const top_left = new Particle([-1, 1, 0], [0, 0, 0], 5, [0, 0, 0]);
+		function create_cube_with_particle_corners(){
+			const particles = [
+				new Particle([-1.0, -1.0, 1.0], [0, 0, 0], 5.0, [0, 0, 0]),
+				new Particle([-1.0, -1.0, -1.0], [0, 0, 0], 5.0, [0, 0, 0]),
+				new Particle([1.0, -1.0, -1.0], [0, 0, 0], 5.0, [0, 0, 0]),
+				new Particle([1.0, -1.0, 1.0], [0, 0, 0], 5.0, [0, 0, 0]),
+				new Particle([-1.0, 1.0, 1.0], [0, 0, 0], 5.0, [0, 0, 0]),
+				new Particle([-1.0, 1.0, -1.0], [0, 0, 0], 5.0, [0, 0, 0]),
+				new Particle([1.0, 1.0, -1.0], [0, 0, 0], 5.0, [0, 0, 0]),
+				new Particle([1.0, 1.0, 1.0], [0, 0, 0], 5.0, [0, 0, 0])
+			];
 			
-			const bottom_spring = new Spring(bottom_left, bottom_right, 4, 1, 2);
-			const right_spring = new Spring(bottom_right, top_right, 4, 1, 2);
-			const top_spring = new Spring(top_right, top_left, 4, 1, 2);
-			const left_spring = new Spring(top_left, bottom_left, 4, 1, 2);
-			const diagonal_spring = new Spring(top_left, bottom_right, 4, 1, Math.sqrt(8));
+			const springs = [
+				new Spring(particles[0], particles[1], 4.0, 1.0, 2.0),
+				new Spring(particles[0], particles[2], 4.0, 1.0, Math.sqrt(8)),
+				new Spring(particles[0], particles[3], 4.0, 1.0, 2.0),
+				new Spring(particles[0], particles[4], 4.0, 1.0, 2.0),
+				new Spring(particles[1], particles[2], 4.0, 1.0, 2.0),
+				new Spring(particles[1], particles[4], 4.0, 1.0, Math.sqrt(8)),
+				new Spring(particles[1], particles[5], 4.0, 1.0, 2.0),
+				new Spring(particles[2], particles[3], 4.0, 1.0, 2.0),
+				new Spring(particles[2], particles[5], 4.0, 1.0, Math.sqrt(8)),
+				new Spring(particles[2], particles[6], 4.0, 1.0, 2.0),
+				new Spring(particles[3], particles[4], 4.0, 1.0, Math.sqrt(8)),
+				new Spring(particles[3], particles[6], 4.0, 1.0, Math.sqrt(8)),
+				new Spring(particles[3], particles[7], 4.0, 1.0, 2.0),
+				new Spring(particles[4], particles[5], 4.0, 1.0, 2.0),
+				new Spring(particles[4], particles[7], 4.0, 1.0, 2.0),
+				new Spring(particles[5], particles[6], 4.0, 1.0, 2.0),
+				new Spring(particles[5], particles[7], 4.0, 1.0, Math.sqrt(8)),
+				new Spring(particles[6], particles[7], 4.0, 1.0, 2.0)
+			];
 			
-			return new ParticleSystem(
-				[bottom_left, bottom_right, top_right, top_left], 
-				[bottom_spring, right_spring, top_spring, left_spring, diagonal_spring]
-			);
+			return new ParticleSystem(particles, springs);
 		}
 		
 		//Shader should already be set up and active, particle_position_buffer should be bound to ARRAY_BUFFER
@@ -561,12 +580,14 @@
 			particle_system.springs.forEach((spring)=>{
 				lines.push(spring.first_particle.position[0]);
 				lines.push(spring.first_particle.position[1]);
+				lines.push(spring.first_particle.position[2]);
 				lines.push(spring.second_particle.position[0]);
 				lines.push(spring.second_particle.position[1]);
+				lines.push(spring.second_particle.position[2]);
 			});
 			
 			const m_matrix = multiply_sequence([
-				create_scale_matrix(50, 50, 1),
+				create_scale_matrix(50, 50, 50),
 				create_translation_matrix([0, 30, -180])
 			]);
 			
@@ -579,7 +600,7 @@
 				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lines), gl.STATIC_DRAW);
 			}
 			
-			render_lines(gl, lines, positionAttributeLocation, mvp_matrix, mvp_matrix_position, render_buffers.render_particle_system_lines_buffer);
+			render_lines(gl, lines, positionAttributeLocation, mvp_matrix, mvp_matrix_position, render_buffers.render_particle_system_lines_buffer, 3);
 			
 			//Meant to be rendered as a triangle strip
 			const quad_triangles = [
@@ -616,13 +637,13 @@
 		}
 		
 		function inflate_particle_position(particle_position){
-			return [particle_position[0] * 50, particle_position[1] * 50 + 30, particle_position[2] - 180];
+			return [particle_position[0] * 50, particle_position[1] * 50 + 30, particle_position[2] * 50 - 180];
 		}
 		
 		// This should do the exact opposite of apply_particle_position, important for picking and dragging to work
 		// Because when picking/dragging, the mouse position has to be transformed into particle position space
 		function deflate_particle_position(particle_position){
-			return [particle_position[0] / 50, (particle_position[1] - 30) / 50, particle_position[2] + 180];
+			return [particle_position[0] / 50, (particle_position[1] - 30) / 50, particle_position[2] + 180 / 50];
 		}
 		
 		function provide_particle_triangles_to_picking_query(particle, quad_triangles, m_matrix, vp_matrix, picking_query){
