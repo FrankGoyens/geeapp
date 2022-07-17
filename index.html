@@ -263,11 +263,13 @@
 			const texture_handle = gl.getUniformLocation(program, "uTexture");
 			const texture_position_attribute_handle = gl.getAttribLocation(program, "aTexturePosition");
 			
+			gl.activeTexture(gl.TEXTURE0);
+			gl.uniform1i(texture_handle, 0);
+			
 			return {
 				"positionAttributeLocation": positionAttributeLocation,
 				"mvp_matrix_position": mvp_matrix_position,
 				"useTexture_handle": useTexture_handle,
-				"texture_handle": texture_handle,
 				"texture_position_attribute_handle": texture_position_attribute_handle
 			};
 		}
@@ -681,40 +683,52 @@
 		}
 		
 		// Shader should be active, positionAttributeLocation will be left enabled as VertexAttribArray
-		function render_particle_system_face(gl, mvp_matrix_position, positionAttributeLocation, mvp_matrix, texture_handle, texture_position_attribute_handle, face){
-			const buffer = gl.createBuffer();
-			gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+		function render_particle_system_face(gl, active_shader, render_buffers, mvp_matrix, quad_triangles, face){
+			if(!("render_particle_system_face_tex_buffer" in render_buffers)){
+				render_buffers.render_particle_system_face_tex_buffer = gl.createBuffer();
+			}
+			gl.bindBuffer(gl.ARRAY_BUFFER, render_buffers.render_particle_system_face_tex_buffer);
+			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quad_triangles), gl.STATIC_DRAW);
+			
+			UpgradeToVertexArray(active_shader.texture_position_attribute_handle, 2);
+			
+			gl.bindTexture(gl.TEXTURE_2D, face.texture_id);
+			
+			if(!("render_particle_system_face_position_buffer" in render_buffers)){
+				render_buffers.render_particle_system_face_position_buffer = gl.createBuffer();
+			}
+			gl.bindBuffer(gl.ARRAY_BUFFER, render_buffers.render_particle_system_face_position_buffer);
 			let particle_positions = [];
 			face.triangle_strip_ordered_particles.forEach((particle)=>{
 				particle_positions.push(...particle.position);
 			});
 			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(particle_positions), gl.STATIC_DRAW);
 			
-			gl.enableVertexAttribArray(texture_position_attribute_handle);
-			const tex_size = 2;          // 3 components per iteration
-			const tex_type = gl.FLOAT;   // the data is 32bit floats
-			const tex_normalize = false; // use the data as is
-			const tex_stride = 0;        // 0 = move size * sizeof(type) each iteration
-			const tex_buffer_offset = 0; // start at the beginning of the buffer
-			gl.vertexAttribPointer(texture_position_attribute_handle, tex_size, tex_type, tex_normalize, tex_stride, tex_buffer_offset);
+			const size = 3;
+			UpgradeToVertexArray(active_shader.positionAttributeLocation, size);
 			
-			gl.activeTexture(gl.TEXTURE0);
-			gl.uniform1i(texture_handle, 0);
-			gl.bindTexture(gl.TEXTURE_2D, face.texture_id);
-			
-			gl.enableVertexAttribArray(positionAttributeLocation);
-			const size = 3;          // 3 components per iteration
-			const type = gl.FLOAT;   // the data is 32bit floats
-			const normalize = false; // use the data as is
-			const stride = 0;        // 0 = move size * sizeof(type) each iteration
-			const buffer_offset = 0; // start at the beginning of the buffer
-			gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, buffer_offset);
-			
-			gl.uniformMatrix4fv(mvp_matrix_position, false, mvp_matrix);
+			gl.uniformMatrix4fv(active_shader.mvp_matrix_position, false, mvp_matrix);
 			
 			const primitiveType = gl.TRIANGLE_STRIP;
 			const draw_offset = 0;
 			gl.drawArrays(primitiveType, draw_offset, particle_positions.length/size);
+		}
+		
+		/** Whatever's bound to gl.ARRAY_BUFFER is upgraded to a n-dimensional VAO
+		 * 
+		 * The datatype will be gl.FLOAT
+		 * Coordinates will not be normalized
+		 * Stride = 0
+		 * Buffer offset = 0
+		 */
+		function UpgradeToVertexArray(attribute_handle, components_per_iteration){
+			gl.enableVertexAttribArray(attribute_handle);
+			const tex_size = components_per_iteration;
+			const tex_type = gl.FLOAT;   // the data is 32bit floats
+			const tex_normalize = false; // use the data as is
+			const tex_stride = 0;        // 0 = move size * sizeof(type) each iteration
+			const tex_buffer_offset = 0; // start at the beginning of the buffer
+			gl.vertexAttribPointer(attribute_handle, tex_size, tex_type, tex_normalize, tex_stride, tex_buffer_offset);
 		}
 		
 		function render_particle_system(gl, particle_system, vp_matrix, active_shader, render_buffers, frame_query){
@@ -746,10 +760,11 @@
 			
 			//Meant to be rendered as a triangle strip
 			const quad_triangles = [
+				0, 1,
+				1, 1,
 				0, 0,
-				0, 1, 
-				1, 0,
-				1, 1
+				1, 0,			
+				
 			];
 			
 			if(!("render_particle_system_particle_buffer" in render_buffers)){
@@ -780,7 +795,7 @@
 			if("particle_system_faces" in particle_system){
 				gl.uniform1i(active_shader.useTexture_handle, 1);
 				particle_system.particle_system_faces.forEach((face)=>{
-					render_particle_system_face(gl, active_shader.mvp_matrix_position, active_shader.positionAttributeLocation, mvp_matrix, active_shader.texture_handle, active_shader.texture_position_attribute_handle, face);
+					render_particle_system_face(gl, active_shader, render_buffers, mvp_matrix, quad_triangles, face);
 				});
 				gl.uniform1i(active_shader.useTexture_handle, 0);
 			}
