@@ -263,6 +263,9 @@
 			
 			const texture_handle = gl.getUniformLocation(program, "uTexture");
 			const texture_position_attribute_handle = gl.getAttribLocation(program, "aTexturePosition");
+			// enableVertexAttribArray is not yet called on texture_position_attribute_handle here (not like with positionAttributeLocation)
+			// when not rendering textures this must be disabled, or some rendering might fail
+			// texture_position_attribute_handle is to be enabled/disabled explicitly when starting/stopping texture rendering
 			
 			gl.activeTexture(gl.TEXTURE0);
 			gl.uniform1i(texture_handle, 0);
@@ -667,7 +670,9 @@
 							[new ParticleSystemFace([particles[0], particles[3], particles[4], particles[7]], loadTexture(gl, "Android_icon_192.png")),
 							new ParticleSystemFace([particles[2], particles[3], particles[6], particles[7]], loadTexture(gl, "Android_icon_192.png")),
 							new ParticleSystemFace([particles[1], particles[2], particles[5], particles[6]], loadTexture(gl, "Android_icon_192.png")),
-							new ParticleSystemFace([particles[0], particles[3], particles[1], particles[2]], loadTexture(gl, "Android_icon_192.png"))]); // particles as faces in triangle strip order
+							new ParticleSystemFace([particles[0], particles[3], particles[1], particles[2]], loadTexture(gl, "Android_icon_192.png")),
+							new ParticleSystemFace([particles[7], particles[4], particles[6], particles[5]], loadTexture(gl, "Android_icon_192.png")),
+							new ParticleSystemFace([particles[0], particles[1], particles[4], particles[5]], loadTexture(gl, "Android_icon_192.png"))]); // particles as faces in triangle strip order
 		}
 		
 		//Shader should already be set up and active, particle_position_buffer should be bound to ARRAY_BUFFER
@@ -726,7 +731,6 @@
 		 * Buffer offset = 0
 		 */
 		function UpgradeToVertexArray(attribute_handle, components_per_iteration){
-			gl.enableVertexAttribArray(attribute_handle);
 			const tex_size = components_per_iteration;
 			const tex_type = gl.FLOAT;   // the data is 32bit floats
 			const tex_normalize = false; // use the data as is
@@ -798,9 +802,11 @@
 			
 			if("particle_system_faces" in particle_system){
 				gl.uniform1i(active_shader.useTexture_handle, 1);
+				gl.enableVertexAttribArray(active_shader.texture_position_attribute_handle);
 				particle_system.particle_system_faces.forEach((face)=>{
 					render_particle_system_face(gl, active_shader, render_buffers, mvp_matrix, quad_triangles, face);
 				});
+				gl.disableVertexAttribArray(active_shader.texture_position_attribute_handle);
 				gl.uniform1i(active_shader.useTexture_handle, 0);
 			}
 		}
