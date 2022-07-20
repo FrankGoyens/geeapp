@@ -132,6 +132,10 @@
 			get_springs(){
 				return this.particle_system.get_springs();
 			}
+			
+			get_particle_system_faces(){
+				return this.particle_system_faces;
+			}
 		}
 		
 		class DampeningForcesDecorator{
@@ -154,6 +158,10 @@
 			
 			get_springs(){
 				return this.particle_system.get_springs();
+			}
+			
+			get_particle_system_faces(){
+				return this.particle_system.get_particle_system_faces();
 			}
 		}
 		
@@ -831,10 +839,10 @@
 				render_particle(gl, particle, quad_triangles, active_shader.positionAttributeLocation, mvp_matrix, active_shader.mvp_matrix_position, render_buffers.render_particle_system_particle_buffer);
 			});
 			
-			if("particle_system_faces" in particle_system){
+			if("get_particle_system_faces" in particle_system){
 				gl.uniform1i(active_shader.useTexture_handle, 1);
 				gl.enableVertexAttribArray(active_shader.texture_position_attribute_handle);
-				particle_system.particle_system_faces.forEach((face)=>{
+				particle_system.get_particle_system_faces().forEach((face)=>{
 					render_particle_system_face(gl, active_shader, render_buffers, mvp_matrix, quad_triangles, face);
 				});
 				gl.disableVertexAttribArray(active_shader.texture_position_attribute_handle);
