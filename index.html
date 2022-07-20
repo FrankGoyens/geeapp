@@ -134,6 +134,29 @@
 			}
 		}
 		
+		class DampeningForcesDecorator{
+			constructor(particle_system){
+				this.particle_system = particle_system;
+			}
+			
+			update(delta_t){
+				const dampening_factor = Math.min(1, 0.99 * (delta_t * 10));
+			
+				this.particle_system.update(delta_t);
+				this.get_particles().forEach((particle)=>{
+					particle.force = scalar_multiply(particle.force, dampening_factor);
+				});
+			}
+			
+			get_particles(){
+				return this.particle_system.get_particles();
+			}
+			
+			get_springs(){
+				return this.particle_system.get_springs();
+			}
+		}
+		
 		function integrate_midpoint(current_x, current_v, current_a, delta_t){
 			return plus(plus(current_x, scalar_multiply(current_v, delta_t)), scalar_multiply(current_a, delta_t * delta_t));
 		}
@@ -669,16 +692,18 @@
 				new Spring(particles[4], particles[6], 4.0, 5.0, diagonal_distance_in_face)
 			];
 			
-			return new RenderFacesDecorator(
-				new AnchoredParticleDecorator(
-					new ParticleSystem(particles, springs), 
-						[particles[8]]), // anchored particle
-							[new ParticleSystemFace([particles[0], particles[3], particles[4], particles[7]], loadTexture(gl, "Android_icon_192.png")),
-							new ParticleSystemFace([particles[2], particles[3], particles[6], particles[7]], loadTexture(gl, "Android_icon_192.png")),
-							new ParticleSystemFace([particles[1], particles[2], particles[5], particles[6]], loadTexture(gl, "Android_icon_192.png")),
-							new ParticleSystemFace([particles[0], particles[3], particles[1], particles[2]], loadTexture(gl, "Android_icon_192.png")),
-							new ParticleSystemFace([particles[7], particles[4], particles[6], particles[5]], loadTexture(gl, "Android_icon_192.png")),
-							new ParticleSystemFace([particles[0], particles[1], particles[4], particles[5]], loadTexture(gl, "Android_icon_192.png"))]); // particles as faces in triangle strip order
+			return new DampeningForcesDecorator(
+				new RenderFacesDecorator(
+					new AnchoredParticleDecorator(
+						new ParticleSystem(particles, springs), 
+							[particles[8]]), // anchored particle
+								[new ParticleSystemFace([particles[0], particles[3], particles[4], particles[7]], loadTexture(gl, "Android_icon_192.png")),
+								new ParticleSystemFace([particles[2], particles[3], particles[6], particles[7]], loadTexture(gl, "Android_icon_192.png")),
+								new ParticleSystemFace([particles[1], particles[2], particles[5], particles[6]], loadTexture(gl, "Android_icon_192.png")),
+								new ParticleSystemFace([particles[0], particles[3], particles[1], particles[2]], loadTexture(gl, "Android_icon_192.png")),
+								new ParticleSystemFace([particles[7], particles[4], particles[6], particles[5]], loadTexture(gl, "Android_icon_192.png")),
+								new ParticleSystemFace([particles[0], particles[1], particles[4], particles[5]], loadTexture(gl, "Android_icon_192.png"))]) // particles as faces in triangle strip order
+				);
 		}
 		
 		//Shader should already be set up and active, particle_position_buffer should be bound to ARRAY_BUFFER
