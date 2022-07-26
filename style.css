@@ -1,0 +1,28 @@
+body{
+	font-family: "Trebuchet MS";
+}
+
+#logo{
+	width: 100%;
+}
+
+#c{
+	float: right;
+}
+
+#geeapp-bar{
+	float: left;
+	width: 10rem;
+	margin: 1rem;
+}
+
+.bar-feature{
+	box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.75);
+	-webkit-box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.75);
+	-moz-box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.75);
+	
+	padding: 0.2rem;
+	border-left: solid;
+	border-color: #007FFF;
+	border-width: 0.2rem;
+}
