@@ -8,12 +8,14 @@ body{
 
 #c{
 	float: right;
+	border-style: dashed;
+	border-color: #00008B;
 }
 
 #geeapp-bar{
 	float: left;
-	width: 10rem;
-	margin: 1rem;
+	width: 12rem;
+	margin: 0.5rem;
 }
 
 .bar-feature{
