@@ -1,21 +1,31 @@
 body{
 	font-family: "Trebuchet MS";
+	text-align: center;
 }
 
 #logo{
+	width: 20rem;
+}
+
+#canvas-container{
+	margin-top: 5rem;
+	display: block;
+	overflow: hidden;
 	width: 100%;
+	text-align: center;
 }
 
 #c{
-	float: right;
-	border-style: dashed;
-	border-color: #00008B;
+	overflow: hidden;
+	width: auto;
+	
+	/*This enabled centering even when the element overflows (i.e. when the body is smaller than 1280px)*/
+	margin-left: -100%;
+    margin-right: -100%;
 }
 
 #geeapp-bar{
-	float: left;
-	width: 12rem;
-	margin: 0.5rem;
+	width: 100%;
 }
 
 .bar-feature{
@@ -23,8 +33,51 @@ body{
 	-webkit-box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.75);
 	-moz-box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.75);
 	
-	padding: 0.2rem;
+	padding: 2rem;
 	border-left: solid;
+	border-right: solid;
 	border-color: #007FFF;
-	border-width: 0.2rem;
+	border-width: 1.5rem;
+}
+
+@media screen and (min-width: 720px) {
+	#geeapp-bar{
+		width: 30rem;
+		margin: 0 auto;
+	}
+}
+
+@media screen and (min-width: 1500px) {
+	body{
+		text-align: left;
+	}
+	
+	#logo{
+		width: 100%;
+	}
+
+	#geeapp-bar{
+		float: left;
+		width: 200px;
+		margin: 0.5rem;
+	}
+	
+	#c{
+		margin: 0;
+		border-style: dashed;
+		border-color: #00008B;
+	}
+	
+	#canvas-container{
+		margin: 0;
+		width: auto;
+		float: top;
+	}
+	
+	
+	.bar-feature{
+		padding: 0.2rem;
+		border-width: 0.2rem;
+		border-right: none;
+	}
 }
