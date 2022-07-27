@@ -3,6 +3,11 @@ body{
 	text-align: center;
 }
 
+#bar-and-canvas{
+	max-width: 1600px;
+	margin: 0 auto;
+}
+
 #logo{
 	width: 20rem;
 }
@@ -19,7 +24,7 @@ body{
 	overflow: hidden;
 	width: auto;
 	
-	/*This enabled centering even when the element overflows (i.e. when the body is smaller than 1280px)*/
+	/*This enables centering even when the element overflows (i.e. when the body is smaller than 1280px)*/
 	margin-left: -100%;
     margin-right: -100%;
 }
@@ -37,7 +42,7 @@ body{
 	border-left: solid;
 	border-right: solid;
 	border-color: #007FFF;
-	border-width: 1.5rem;
+	border-width: 0.5rem;
 }
 
 @media screen and (min-width: 720px) {
@@ -48,7 +53,7 @@ body{
 }
 
 @media screen and (min-width: 1500px) {
-	body{
+	#bar-and-canvas{
 		text-align: left;
 	}
 	
@@ -73,7 +78,6 @@ body{
 		width: auto;
 		float: top;
 	}
-	
 	
 	.bar-feature{
 		padding: 0.2rem;
