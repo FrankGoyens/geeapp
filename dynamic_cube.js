@@ -203,6 +203,7 @@ const canvas_picking = {
 	"pick_reset_request": false
 };
 bind_mouse_events_to_canvas(canvas, canvas_picking);
+bind_touch_events_to_canvas(canvas, canvas_picking);
 
 function bind_mouse_events_to_canvas(canvas, canvas_picking){
 	canvas.addEventListener("mousedown", (event)=>{
@@ -217,6 +218,34 @@ function bind_mouse_events_to_canvas(canvas, canvas_picking){
 	canvas.addEventListener("mousemove", (event)=>{
 		const bounds = canvas.getBoundingClientRect();
 		canvas_picking.pick_drag_request = {"x": event.x - bounds.left, "y": event.y - bounds.top};
+	});
+}
+
+function bind_touch_events_to_canvas(canvas, canvas_picking){
+	canvas.addEventListener("touchstart", (event)=>{
+		if(event.changedTouches.length==0)
+			return;
+		
+		const bounds = canvas.getBoundingClientRect();
+		const first_touch = event.changedTouches[0];
+		canvas_picking.pick_request = {"x": first_touch.clientX - bounds.left, "y": first_touch.clientY - bounds.top};
+		
+		event.preventDefault()
+	});
+	
+	canvas.addEventListener("touchend", (event)=>{
+		canvas_picking.pick_reset_request = true;
+		event.preventDefault()
+	});
+	
+	canvas.addEventListener("touchmove", (event)=>{
+		if(event.changedTouches.length==0)
+			return;
+		
+		const bounds = canvas.getBoundingClientRect();
+		const first_touch = event.changedTouches[0];
+		canvas_picking.pick_drag_request = {"x": first_touch.clientX - bounds.left, "y": first_touch.clientY - bounds.top};
+		event.preventDefault()
 	});
 }
 
