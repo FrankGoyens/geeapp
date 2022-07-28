@@ -229,23 +229,12 @@ else{
 }
 
 function start_rendering_to_gl_context(canvas, canvas_picking, gl){
-	const NEAR = 0.1;
-	const FAR = 1100;
-	
 	gl.clearColor(1, 1, 1, 1);
 	gl.enable(gl.DEPTH_TEST);
 	
 	const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertex_shader_source);
 	const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragment_shader_source);
-	const program = createProgram(gl, vertexShader, fragmentShader);
-	
-	const p_matrix = create_perspective_matrix(90.0, canvas.width/canvas.height, NEAR, FAR);
-	const v_matrix = create_lookat_matrix(
-		[0, 90, 1], 
-		[Math.sin(0), 90, 1 - Math.cos(0)], 
-		[0, 1, 0]);
-	
-	const vp_matrix = multiply(v_matrix, p_matrix);			
+	const program = createProgram(gl, vertexShader, fragmentShader);		
 
 	gl.useProgram(program);	
 	const active_shader = bind_shader_program_handles(gl, program);
@@ -265,7 +254,7 @@ function start_rendering_to_gl_context(canvas, canvas_picking, gl){
 		"picking_query_result": []
 	};
 	
-	window.requestAnimationFrame((timestamp)=>draw(timestamp, timestamp, vp_matrix, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking));
+	window.requestAnimationFrame((timestamp)=>draw(timestamp, timestamp, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking));
 }
 
 // Shader should already be in use
@@ -295,11 +284,12 @@ function bind_shader_program_handles(gl, program){
 	};
 }
 
-function draw(timestamp, previous_timestamp, vp_matrix, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking){
+function draw(timestamp, previous_timestamp, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking){
 	gl.clear(gl.COLOR_BUFFER_BIT);
 	
 	const delta_t = Math.min((timestamp - previous_timestamp) * 0.006, 0.6);
 
+	const vp_matrix = adjust_viewport(canvas, gl);
 	consume_canvas_picking_request(canvas_picking, frame_query, canvas, vp_matrix);
 
 	render_grid(gl, elements_to_render.grid_lines, active_shader.positionAttributeLocation, vp_matrix, active_shader.mvp_matrix_position, render_buffers);
@@ -309,7 +299,25 @@ function draw(timestamp, previous_timestamp, vp_matrix, active_shader, elements_
 	
 	frame_query.picking_query = null;
 	
-	window.requestAnimationFrame((next_timestamp)=>draw(next_timestamp, timestamp, vp_matrix, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking));
+	window.requestAnimationFrame((next_timestamp)=>draw(next_timestamp, timestamp, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking));
+}
+
+function adjust_viewport(canvas, gl){
+	const NEAR = 0.1;
+	const FAR = 1100;
+	
+	const rect = canvas.getBoundingClientRect();
+	canvas.width = rect.width;
+	gl.viewport(0,0,canvas.width,canvas.height);
+	
+	const p_matrix = create_perspective_matrix(90.0, canvas.width/canvas.height, NEAR, FAR);
+	const v_matrix = create_lookat_matrix(
+		[0, 90, 1], 
+		[Math.sin(0), 90, 1 - Math.cos(0)], 
+		[0, 1, 0]);
+	
+	const vp_matrix = multiply(v_matrix, p_matrix);
+	return vp_matrix;
 }
 
 function consume_canvas_picking_request(canvas_picking, frame_query, canvas, vp_matrix){

@@ -15,18 +15,11 @@ body{
 #canvas-container{
 	margin-top: 5rem;
 	display: block;
-	overflow: hidden;
 	width: 100%;
-	text-align: center;
 }
 
 #c{
-	overflow: hidden;
-	width: auto;
-	
-	/*This enables centering even when the element overflows (i.e. when the body is smaller than 1280px)*/
-	margin-left: -100%;
-    margin-right: -100%;
+	width: 100%;
 }
 
 #geeapp-bar{
@@ -68,7 +61,7 @@ body{
 	}
 	
 	#c{
-		margin: 0;
+		width: 1280px;
 		border-style: dashed;
 		border-color: #00008B;
 	}
