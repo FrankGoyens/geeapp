@@ -8,6 +8,8 @@ class Particle{
 	}
 	
 	update_position(delta_t){
+		delta_t = Math.min(delta_t, 50);
+		delta_t *= 0.004;
 		const acceleration = scalar_multiply(this.force, 1/this.mass);
 		this.velocity = scalar_multiply(acceleration, delta_t);
 		const new_position = integrate_midpoint(this.position, this.velocity, acceleration, delta_t);
@@ -130,7 +132,7 @@ class DampeningForcesDecorator{
 	}
 	
 	update(delta_t){
-		const dampening_factor = Math.min(1, 0.99 * (delta_t * 10));
+		const dampening_factor = 0.99;
 	
 		this.particle_system.update(delta_t);
 		this.get_particles().forEach((particle)=>{
@@ -283,7 +285,21 @@ function start_rendering_to_gl_context(canvas, canvas_picking, gl){
 		"picking_query_result": []
 	};
 	
-	window.requestAnimationFrame((timestamp)=>draw(timestamp, timestamp, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking));
+	const fps_counter_dom_element = document.getElementById("fps_counter");
+		
+	const visibility = {
+		"fps_counter": true
+	}
+	
+	update_fps_counter_visibility(visibility, fps_counter_dom_element);
+	
+	window.requestAnimationFrame((timestamp)=>draw(timestamp, timestamp, visibility, fps_counter_dom_element, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking));
+}
+
+function update_fps_counter_visibility(visibility, fps_counter_dom_element){
+	if(fps_counter_dom_element!=null){
+		fps_counter_dom_element.style.display = visibility.fps_counter ? "inline" : "none";
+	}
 }
 
 // Shader should already be in use
@@ -313,11 +329,14 @@ function bind_shader_program_handles(gl, program){
 	};
 }
 
-function draw(timestamp, previous_timestamp, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking){
+function draw(timestamp, previous_timestamp, visibility, fps_counter_dom_element, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking){
 	gl.clear(gl.COLOR_BUFFER_BIT);
 	
-	const delta_t = Math.min((timestamp - previous_timestamp) * 0.006, 0.6);
-
+	const milliseconds_per_frame = timestamp - previous_timestamp;
+	update_fps_counter(fps_counter_dom_element, milliseconds_per_frame);
+	
+	const delta_t = Math.min(milliseconds_per_frame, 1000);
+	
 	const vp_matrix = adjust_viewport(canvas, gl);
 	consume_canvas_picking_request(canvas_picking, frame_query, canvas, vp_matrix);
 
@@ -328,7 +347,12 @@ function draw(timestamp, previous_timestamp, active_shader, elements_to_render, 
 	
 	frame_query.picking_query = null;
 	
-	window.requestAnimationFrame((next_timestamp)=>draw(next_timestamp, timestamp, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking));
+	window.requestAnimationFrame((next_timestamp)=>draw(next_timestamp, timestamp, visibility, fps_counter_dom_element, active_shader, elements_to_render, render_buffers, frame_query, canvas, canvas_picking));			
+}
+
+function update_fps_counter(fps_counter_dom_element, milliseconds_per_frame){
+	const frames_per_second = (1.0 / (milliseconds_per_frame/1000));
+	fps_counter_dom_element.innerHTML = "FPS: " + frames_per_second.toFixed(2);
 }
 
 function adjust_viewport(canvas, gl){
@@ -689,38 +713,38 @@ function create_cube_with_particle_corners(gl){
 	const corner_to_center_distance = Math.sqrt(4 + 8) / 2.0;
 	
 	const springs = [
-		new Spring(particles[0], particles[1], 4.0, 5.0, 2.0),
-		new Spring(particles[0], particles[8], 4.0, 5.0, corner_to_center_distance),
-		new Spring(particles[0], particles[3], 4.0, 5.0, 2.0),
-		new Spring(particles[0], particles[4], 4.0, 5.0, 2.0),
-		new Spring(particles[1], particles[2], 4.0, 5.0, 2.0),
-		new Spring(particles[1], particles[8], 4.0, 5.0, corner_to_center_distance),
-		new Spring(particles[1], particles[5], 4.0, 5.0, 2.0),
-		new Spring(particles[2], particles[3], 4.0, 5.0, 2.0),
-		new Spring(particles[2], particles[8], 4.0, 5.0, corner_to_center_distance),
-		new Spring(particles[2], particles[6], 4.0, 5.0, 2.0),
-		new Spring(particles[3], particles[8], 4.0, 5.0, corner_to_center_distance),
-		new Spring(particles[8], particles[6], 4.0, 5.0, corner_to_center_distance),
-		new Spring(particles[3], particles[7], 4.0, 5.0, 2.0),
-		new Spring(particles[4], particles[5], 4.0, 5.0, 2.0),
-		new Spring(particles[4], particles[7], 4.0, 5.0, 2.0),
-		new Spring(particles[5], particles[6], 4.0, 5.0, 2.0),
-		new Spring(particles[5], particles[8], 4.0, 5.0, corner_to_center_distance),
-		new Spring(particles[6], particles[7], 4.0, 5.0, 2.0),
-		new Spring(particles[7], particles[8], 4.0, 5.0, corner_to_center_distance),
-		new Spring(particles[4], particles[8], 4.0, 5.0, corner_to_center_distance),
-		new Spring(particles[0], particles[2], 4.0, 5.0, diagonal_distance_in_face),
-		new Spring(particles[1], particles[3], 4.0, 5.0, diagonal_distance_in_face),
-		new Spring(particles[1], particles[4], 4.0, 5.0, diagonal_distance_in_face),
-		new Spring(particles[0], particles[5], 4.0, 5.0, diagonal_distance_in_face),
-		new Spring(particles[2], particles[5], 4.0, 5.0, diagonal_distance_in_face),
-		new Spring(particles[1], particles[6], 4.0, 5.0, diagonal_distance_in_face),
-		new Spring(particles[3], particles[4], 4.0, 5.0, diagonal_distance_in_face),
-		new Spring(particles[0], particles[7], 4.0, 5.0, diagonal_distance_in_face),
-		new Spring(particles[3], particles[6], 4.0, 5.0, diagonal_distance_in_face),
-		new Spring(particles[2], particles[7], 4.0, 5.0, diagonal_distance_in_face),
-		new Spring(particles[5], particles[7], 4.0, 5.0, diagonal_distance_in_face),
-		new Spring(particles[4], particles[6], 4.0, 5.0, diagonal_distance_in_face)
+		new Spring(particles[0], particles[1], 8.0, 5.0, 2.0),
+		new Spring(particles[0], particles[8], 8.0, 5.0, corner_to_center_distance),
+		new Spring(particles[0], particles[3], 8.0, 5.0, 2.0),
+		new Spring(particles[0], particles[4], 8.0, 5.0, 2.0),
+		new Spring(particles[1], particles[2], 8.0, 5.0, 2.0),
+		new Spring(particles[1], particles[8], 8.0, 5.0, corner_to_center_distance),
+		new Spring(particles[1], particles[5], 8.0, 5.0, 2.0),
+		new Spring(particles[2], particles[3], 8.0, 5.0, 2.0),
+		new Spring(particles[2], particles[8], 8.0, 5.0, corner_to_center_distance),
+		new Spring(particles[2], particles[6], 8.0, 5.0, 2.0),
+		new Spring(particles[3], particles[8], 8.0, 5.0, corner_to_center_distance),
+		new Spring(particles[8], particles[6], 8.0, 5.0, corner_to_center_distance),
+		new Spring(particles[3], particles[7], 8.0, 5.0, 2.0),
+		new Spring(particles[4], particles[5], 8.0, 5.0, 2.0),
+		new Spring(particles[4], particles[7], 8.0, 5.0, 2.0),
+		new Spring(particles[5], particles[6], 8.0, 5.0, 2.0),
+		new Spring(particles[5], particles[8], 8.0, 5.0, corner_to_center_distance),
+		new Spring(particles[6], particles[7], 8.0, 5.0, 2.0),
+		new Spring(particles[7], particles[8], 8.0, 5.0, corner_to_center_distance),
+		new Spring(particles[4], particles[8], 8.0, 5.0, corner_to_center_distance),
+		new Spring(particles[0], particles[2], 8.0, 5.0, diagonal_distance_in_face),
+		new Spring(particles[1], particles[3], 8.0, 5.0, diagonal_distance_in_face),
+		new Spring(particles[1], particles[4], 8.0, 5.0, diagonal_distance_in_face),
+		new Spring(particles[0], particles[5], 8.0, 5.0, diagonal_distance_in_face),
+		new Spring(particles[2], particles[5], 8.0, 5.0, diagonal_distance_in_face),
+		new Spring(particles[1], particles[6], 8.0, 5.0, diagonal_distance_in_face),
+		new Spring(particles[3], particles[4], 8.0, 5.0, diagonal_distance_in_face),
+		new Spring(particles[0], particles[7], 8.0, 5.0, diagonal_distance_in_face),
+		new Spring(particles[3], particles[6], 8.0, 5.0, diagonal_distance_in_face),
+		new Spring(particles[2], particles[7], 8.0, 5.0, diagonal_distance_in_face),
+		new Spring(particles[5], particles[7], 8.0, 5.0, diagonal_distance_in_face),
+		new Spring(particles[4], particles[6], 8.0, 5.0, diagonal_distance_in_face)
 	];
 	
 	return new DampeningForcesDecorator(
