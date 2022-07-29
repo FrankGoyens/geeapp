@@ -285,10 +285,12 @@ function start_rendering_to_gl_context(canvas, canvas_picking, gl){
 		"picking_query_result": []
 	};
 	
+	const urlSearchParams = new URLSearchParams(window.location.search);
+	
 	const fps_counter_dom_element = document.getElementById("fps_counter");
 		
 	const visibility = {
-		"fps_counter": true
+		"fps_counter": urlSearchParams.get("fpscounter") != null && urlSearchParams.get("fpscounter") == "1"
 	}
 	
 	update_fps_counter_visibility(visibility, fps_counter_dom_element);
