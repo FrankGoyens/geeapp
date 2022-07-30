@@ -878,7 +878,7 @@ function render_particle_system(gl, particle_system, vp_matrix, active_shader, r
 	particle_system.get_particles().forEach((particle, index)=>{
 		const m_matrix = multiply_sequence([
 			create_translation_matrix([-0.5, -0.5, 0]),
-			create_scale_matrix(10, 10, 1),
+			create_scale_matrix(20, 20, 1),
 			create_translation_matrix(inflate_particle_position(particle.position))
 		]);
 		
