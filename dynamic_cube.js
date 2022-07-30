@@ -749,17 +749,20 @@ function create_cube_with_particle_corners(gl){
 		new Spring(particles[4], particles[6], 8.0, 5.0, diagonal_distance_in_face)
 	];
 	
+	const danger_zones_texture_id = loadTexture(gl, "Android_icon_192.png");
+	const diceroller_texture_id = loadTexture(gl, "diceroller_icon.png");
+	
 	return new DampeningForcesDecorator(
 		new RenderFacesDecorator(
 			new AnchoredParticleDecorator(
 				new ParticleSystem(particles, springs), 
 					[particles[8]]), // anchored particle
-						[new ParticleSystemFace([particles[0], particles[3], particles[4], particles[7]], loadTexture(gl, "Android_icon_192.png")),
-						new ParticleSystemFace([particles[2], particles[3], particles[6], particles[7]], loadTexture(gl, "Android_icon_192.png")),
-						new ParticleSystemFace([particles[1], particles[2], particles[5], particles[6]], loadTexture(gl, "Android_icon_192.png")),
-						new ParticleSystemFace([particles[0], particles[3], particles[1], particles[2]], loadTexture(gl, "Android_icon_192.png")),
-						new ParticleSystemFace([particles[7], particles[4], particles[6], particles[5]], loadTexture(gl, "Android_icon_192.png")),
-						new ParticleSystemFace([particles[0], particles[1], particles[4], particles[5]], loadTexture(gl, "Android_icon_192.png"))]) // particles as faces in triangle strip order
+						[new ParticleSystemFace([particles[0], particles[3], particles[4], particles[7]], danger_zones_texture_id),
+						new ParticleSystemFace([particles[2], particles[3], particles[6], particles[7]], diceroller_texture_id),
+						new ParticleSystemFace([particles[1], particles[2], particles[5], particles[6]], danger_zones_texture_id),
+						new ParticleSystemFace([particles[0], particles[3], particles[1], particles[2]], danger_zones_texture_id),
+						new ParticleSystemFace([particles[7], particles[4], particles[6], particles[5]], diceroller_texture_id),
+						new ParticleSystemFace([particles[0], particles[1], particles[4], particles[5]], diceroller_texture_id)]) // particles as faces in triangle strip order
 		);
 }
 
