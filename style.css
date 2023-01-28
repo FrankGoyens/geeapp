@@ -18,11 +18,24 @@ body{
 }
 
 #c{
-	width: 100%;
+	width: 80%;
+	border-style: dashed;
+	border-color: #00008B;
 }
 
 #geeapp-bar{
 	width: 100%;
+}
+
+#jacky-app-block{
+	width: 100%;
+	border-style: solid;
+	border-color: #f17065;
+	border-radius: 20px;
+	background-color: #f1bcb8;
+	background-image: url("repeating_bg.png");
+	text-shadow: 1px 1px #f17065;
+	margin-top: 50px;
 }
 
 .bar-feature{
@@ -42,6 +55,17 @@ body{
 		width: 30rem;
 		margin: 0 auto;
 	}
+	
+	footer{
+		width: inherit;
+		margin: 0 auto;
+	}
+	
+	#jacky-app-block{
+		width: 80%;
+		margin: 0 auto;
+		margin-top: 50px;
+	}
 }
 
 @media screen and (min-width: 1500px) {
@@ -60,20 +84,31 @@ body{
 	}
 	
 	#c{
-		width: 1280px;
-		border-style: dashed;
-		border-color: #00008B;
+		width: 1100px;
 	}
 	
 	#canvas-container{
 		margin: 0;
 		width: auto;
-		float: top;
+		float: right;
+		margin-top: 50px;
 	}
 	
 	.bar-feature{
 		padding: 0.2rem;
 		border-width: 0.2rem;
 		border-right: none;
+	}
+	
+	#jacky-app-block{
+		max-width: 900px;
+		float: right;
+		text-align: center;
+		padding-left: 100px;
+		padding-right: 100px;
+	}
+	
+	footer{
+		float: left;
 	}
 }
