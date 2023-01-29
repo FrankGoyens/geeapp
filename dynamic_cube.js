@@ -751,6 +751,7 @@ function create_cube_with_particle_corners(gl){
 	
 	const danger_zones_texture_id = loadTexture(gl, "Android_icon_192.png");
 	const diceroller_texture_id = loadTexture(gl, "diceroller_icon.png");
+	const jacky_texture_id = loadTexture(gl, "icon_v1.png");
 	
 	return new DampeningForcesDecorator(
 		new RenderFacesDecorator(
@@ -759,10 +760,10 @@ function create_cube_with_particle_corners(gl){
 					[particles[8]]), // anchored particle
 						[new ParticleSystemFace([particles[0], particles[3], particles[4], particles[7]], danger_zones_texture_id),
 						new ParticleSystemFace([particles[2], particles[3], particles[6], particles[7]], diceroller_texture_id),
-						new ParticleSystemFace([particles[1], particles[2], particles[5], particles[6]], danger_zones_texture_id),
+						new ParticleSystemFace([particles[1], particles[2], particles[5], particles[6]], jacky_texture_id),
 						new ParticleSystemFace([particles[0], particles[3], particles[1], particles[2]], danger_zones_texture_id),
 						new ParticleSystemFace([particles[7], particles[4], particles[6], particles[5]], diceroller_texture_id),
-						new ParticleSystemFace([particles[0], particles[1], particles[4], particles[5]], diceroller_texture_id)]) // particles as faces in triangle strip order
+						new ParticleSystemFace([particles[0], particles[1], particles[4], particles[5]], jacky_texture_id)]) // particles as faces in triangle strip order
 		);
 }
 
