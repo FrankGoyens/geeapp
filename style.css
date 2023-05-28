@@ -29,9 +29,7 @@ body{
 
 #jacky-app-block{
 	width: 100%;
-	border-style: solid;
 	border-color: #f17065;
-	border-radius: 20px;
 	background-color: #f1bcb8;
 	background-image: url("repeating_bg.png");
 	text-shadow: 1px 1px #f17065;
