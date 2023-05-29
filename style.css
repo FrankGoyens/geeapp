@@ -35,6 +35,44 @@ body{
 	margin-top: 50px;
 }
 
+#jacky-launch-app-block{
+	background-image: url("gold_glitter.jpg");
+	background-repeat: repeat;
+	border-color: gold;
+}
+
+.launch-highlight{
+	box-shadow: 2px 2px 2px 0px rgba(0,0,0,0.75);
+	-webkit-box-shadow: 2px 2px 2px 0px rgba(0,0,0,0.75);
+	-moz-box-shadow: 2px 2px 2px 0px rgba(0,0,0,0.75);
+
+	color: black;
+	background-color: white;
+	padding: 0.2em;
+
+	margin-left: auto;
+	margin-right: auto;
+}
+
+#jacky-app-image-background{
+	box-shadow: 2px 2px 2px 0px rgba(0,0,0,0.75);
+	-webkit-box-shadow: 2px 2px 2px 0px rgba(0,0,0,0.75);
+	-moz-box-shadow: 2px 2px 2px 0px rgba(0,0,0,0.75);
+
+	background-color: white;
+	border-radius: 30px;
+	border-style: solid;
+	border-width: 1px;
+	border-color: gray;
+
+	margin-top: 2em;
+}
+
+#jacky-play-store-image-background{
+	display: inline;
+}
+
+
 .bar-feature{
 	box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.75);
 	-webkit-box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.75);
@@ -58,7 +96,7 @@ body{
 		margin: 0 auto;
 	}
 	
-	#jacky-app-block{
+	.large-bar-feature{
 		width: 80%;
 		margin: 0 auto;
 		margin-top: 50px;
@@ -100,7 +138,7 @@ body{
 		border-right: none;
 	}
 	
-	#jacky-app-block{
+	.large-bar-feature{
 		max-width: 900px;
 		float: right;
 		text-align: center;
