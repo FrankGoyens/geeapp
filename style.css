@@ -64,6 +64,10 @@ body{
 		margin: 0 auto;
 		margin-top: 50px;
 	}
+
+	.launch-highlight{
+		width: max-content;
+	}
 }
 
 @media screen and (min-width: 1500px) {
@@ -86,10 +90,9 @@ body{
 	}
 	
 	#canvas-container{
-		margin: 0;
 		width: auto;
 		float: right;
-		margin-top: 50px;
+		margin: 50px auto;
 	}
 	
 	.bar-feature{
@@ -107,6 +110,7 @@ body{
 	}
 	
 	footer{
-		float: left;
+		max-width: 1500px;
+		clear: both;
 	}
 }
