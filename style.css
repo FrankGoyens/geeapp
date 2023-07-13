@@ -89,12 +89,13 @@ body{
 	margin-top: 50px;
 }
 
-#homepage #geeapp-bar .bar-feature img{
-	width: 256px;
-}
-
 footer{
 	margin-top: 50px;
+}
+
+#small-app-logo{
+	width: 64px;
+	float: left;
 }
 
 @media screen and (min-width: 720px) {
@@ -162,11 +163,6 @@ footer{
 	footer{
 		max-width: 1500px;
 		clear: both;
-	}
-		
-	#homepage #geeapp-bar .bar-feature img{
-		width: 64px;
-		float: left;
 	}
 }
 
