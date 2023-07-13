@@ -98,6 +98,10 @@ footer{
 	float: left;
 }
 
+#store-badges img{
+	vertical-align: middle;
+}
+
 @media screen and (min-width: 720px) {
 	#geeapp-bar{
 		width: 30rem;
