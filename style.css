@@ -40,6 +40,13 @@ body{
 	border-color: gold;
 }
 
+#jacky-launch-app-block-en{
+	background-image: url("jacky_launch_en.jpg");
+	background-repeat: no-repeat;
+	border-color: #9966cc;
+	background-size: 100% 100%;
+}
+
 #jacky-launch-app-block #jacky-app-image-background{
 	margin-top: 2em;
 }
