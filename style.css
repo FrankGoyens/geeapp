@@ -44,7 +44,8 @@ body{
 	background-image: url("jacky_launch_en.jpg");
 	background-repeat: no-repeat;
 	border-color: #9966cc;
-	background-size: 100% 100%;
+	background-size: cover;
+	background-position: center;
 }
 
 #jacky-launch-app-block #jacky-app-image-background{
@@ -174,6 +175,10 @@ footer{
 	footer{
 		max-width: 1500px;
 		clear: both;
+	}
+
+	#jacky-launch-app-block-en{
+		background-size: 100% 100%;
 	}
 }
 
