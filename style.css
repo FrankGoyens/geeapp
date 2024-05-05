@@ -34,6 +34,13 @@ body{
 	text-shadow: 1px 1px #f17065;
 }
 
+#dangerzones-website-block-en{
+	background-image: url("promo.png");
+	background-repeat: repeat;
+	background-size: cover;
+	background-position: top;
+}
+
 #jacky-launch-app-block{
 	background-image: url("gold_glitter.jpg");
 	background-repeat: repeat;
@@ -77,6 +84,10 @@ body{
 	border-color: gray;
 }
 
+.dangerzones-share-button-background{
+	vertical-align: middle;
+}
+
 #jacky-play-store-image-background{
 	display: inline;
 }
@@ -91,6 +102,7 @@ body{
 	padding-right: 0.5em;
 	border-color: #007FFF;
 	border-width: 0.5rem;
+	margin-top: 1rem;
 }
 
 .large-bar-feature{
@@ -101,9 +113,10 @@ footer{
 	margin-top: 50px;
 }
 
-#small-app-logo{
+.small-app-logo{
 	width: 64px;
 	float: left;
+	margin-right: 1rem;
 }
 
 #store-badges img{
