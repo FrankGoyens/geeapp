@@ -749,7 +749,7 @@ function create_cube_with_particle_corners(gl){
 		new Spring(particles[4], particles[6], 8.0, 5.0, diagonal_distance_in_face)
 	];
 	
-	const danger_zones_texture_id = loadTexture(gl, "Android_icon_192.png");
+	const danger_zones_texture_id = loadTexture(gl, "dza_android_icon.png");
 	const diceroller_texture_id = loadTexture(gl, "diceroller_icon.png");
 	const jacky_texture_id = loadTexture(gl, "icon_v1.png");
 	
