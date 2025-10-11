@@ -5,7 +5,7 @@
 }
 
 body {
-    font-family: 'Comic Sans MS', cursive, sans-serif;
+    font-family: 'Comic Sans MS', 'Comic Sans';
     background-color: #8ecae6;
     min-height: 100vh;
     display: flex;
