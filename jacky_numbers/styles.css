@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap');
+
 * {
     margin: 0;
     padding: 0;
@@ -5,7 +7,7 @@
 }
 
 body {
-    font-family: 'Comic Sans MS', 'Comic Sans';
+    font-family: "Chalkboard SE", "Comic Neue", "Marker Felt", -apple-system, BlinkMacSystemFont, "Comic Sans MS", sans-serif;
     background-color: #8ecae6;
     min-height: 100vh;
     display: flex;

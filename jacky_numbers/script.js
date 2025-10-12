@@ -150,6 +150,40 @@ function setupRoofNumberListener() {
     });
 }
 
+function fireConfetti() {
+    // First burst
+    confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+    });
+
+    // Side bursts
+    setTimeout(() => {
+        confetti({
+            particleCount: 50,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 }
+        });
+        confetti({
+            particleCount: 50,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 }
+        });
+    }, 250);
+
+    // Final burst
+    setTimeout(() => {
+        confetti({
+            particleCount: 150,
+            spread: 100,
+            origin: { y: 0.7 }
+        });
+    }, 500);
+}
+
 function checkAllAnswers() {
     const inputs = document.querySelectorAll('.answer-input');
     const allCorrect = Array.from(inputs).every(input => 
@@ -171,5 +205,8 @@ function checkAllAnswers() {
         
         // Add celebration animation to the building
         document.getElementById('apartment-building').classList.add('celebration');
+        
+        // Fire confetti
+        fireConfetti();
     }
 }
